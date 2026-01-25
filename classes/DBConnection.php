@@ -1,29 +1,29 @@
 <?php
-// DBConnection.php
-
-// Use __DIR__ to get the current folder of this file
-require_once(__DIR__ . '/../initialize.php');
+require_once __DIR__ . '/../initialize.php';
 
 class DBConnection {
-    private $host = DB_SERVER;
-    private $username = DB_USERNAME;
-    private $password = DB_PASSWORD;
-    private $database = DB_NAME;
-    
+
     public $conn;
-    
+
     public function __construct() {
-        if (!isset($this->conn)) {
-            $this->conn = new mysqli($this->host, $this->username, $this->password, $this->database);
-            if (!$this->conn) {
-                echo 'Cannot connect to database server';
-                exit;
-            }            
-        }    
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+        try {
+            $this->conn = new mysqli(
+                DB_SERVER,
+                DB_USERNAME,
+                DB_PASSWORD,
+                DB_NAME
+            );
+            $this->conn->set_charset('utf8mb4');
+        } catch (mysqli_sql_exception $e) {
+            die('Database connection failed: ' . $e->getMessage());
+        }
     }
 
     public function __destruct() {
-        $this->conn->close();
+        if ($this->conn) {
+            $this->conn->close();
+        }
     }
 }
-?>
