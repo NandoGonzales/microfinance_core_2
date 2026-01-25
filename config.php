@@ -9,7 +9,7 @@ if (session_status() == PHP_SESSION_NONE) {
 
 require_once('initialize.php');
 require_once('classes/DBConnection.php');
-require_once('classes/SystemSettings.php');
+require_once('classes/systemSettings.php');
 
 $db = new DBConnection;
 $conn = $db->conn;
