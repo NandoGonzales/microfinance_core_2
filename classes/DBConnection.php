@@ -13,7 +13,8 @@ class DBConnection {
                 DB_SERVER,
                 DB_USERNAME,
                 DB_PASSWORD,
-                DB_NAME
+                DB_NAME,
+                3306  // Port number here
             );
             $this->conn->set_charset('utf8mb4');
         } catch (mysqli_sql_exception $e) {
