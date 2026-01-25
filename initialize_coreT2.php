@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // === Include Core Files ===
 require_once(__DIR__ . '/initialize.php');             // system config
 require_once(__DIR__ . '/classes/DBConnection.php');   // DB handler
-require_once(__DIR__ . '/classes/SystemSettings.php'); // system settings handler
+require_once(__DIR__ . '/classes/systemSettings.php'); // system settings handler
 
 // === Database Connection ===
 $db = new DBConnection;
