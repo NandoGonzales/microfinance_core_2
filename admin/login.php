@@ -1,5 +1,5 @@
 <?php
-require_once('../initialize_coreT2.php');
+require_once('../initialize_.php');
 require_once(__DIR__ . '/inc/log_audit_trial.php');
 
 if (session_status() === PHP_SESSION_NONE) session_start();
@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 // Redirect if already logged in
 if (isset($_SESSION['userdata'])) {
     // 🔴 FIXED: Use absolute path
-    header("Location: /coret2/admin/dashboard.php");
+    header("Location: /admin/dashboard.php");
     exit();
 }
 
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 // 🔴 FIXED: Use absolute path
-                header("Location: /coret2/admin/dashboard.php");
+                header("Location: //admin/dashboard.php");
                 exit();
             }
         } else {
@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="login-card">
         <div class="text-center mb-3">
             <img src="<?= validate_image($_settings->info('logo') ?? 'dist/img/logo.jpg') ?>" class="system-logo" alt="Logo">
-            <h4><?= $_settings->info('system_name') ?? 'CoreT2 System' ?></h4>
+            <h4><?= $_settings->info('system_name') ?? ' System' ?></h4>
             <small class="text-muted"><?= $_settings->info('system_tagline') ?? 'Secure Access Portal' ?></small>
         </div>
 

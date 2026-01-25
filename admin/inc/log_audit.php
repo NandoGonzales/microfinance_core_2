@@ -86,7 +86,7 @@ function handleSessionTimeout()
     session_destroy();
 
     // Redirect to login
-    header("Location: /coret2/admin/login.php?timeout=1");
+    header("Location: /admin/login.php?timeout=1");
     exit();
 }
 
@@ -116,7 +116,7 @@ if (!isset($_SESSION['userdata'])) {
     }
 
     // Redirect to login page
-    header("Location: /coret2/admin/login.php");
+    header("Location: /admin/login.php");
     exit();
 }
 
@@ -133,7 +133,7 @@ if (isset($_SESSION['userdata']) && $is_login_page) {
         );
     }
 
-    header("Location: /coret2/admin/dashboard.php");
+    header("Location: /admin/dashboard.php");
     exit;
 }
 
@@ -164,7 +164,7 @@ function autoLogoutJS()
 
         function logoutDueToInactivity() {
             // Redirect to logout page
-            window.location.href = '/coret2/admin/logout.php?auto=1';
+            window.location.href = '/admin/logout.php?auto=1';
         }
 
         // Start timer when page loads

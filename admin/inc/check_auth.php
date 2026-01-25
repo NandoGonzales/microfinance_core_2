@@ -10,7 +10,7 @@ if (!isset($_SESSION['userdata']) || empty($_SESSION['userdata']['user_id'])) {
     $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
     
     // Redirect to login with correct path
-    header("Location: /coret2/admin/login.php");
+    header("Location: /admin/login.php");
     exit();
 }
 ?>

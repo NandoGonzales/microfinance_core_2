@@ -47,8 +47,8 @@ header("Expires: 0");
 
 // If auto-logout, redirect with auto parameter
 if (isset($_GET['auto'])) {
-    header("Location: /coret2/admin/login.php?timeout=1&auto=1");
+    header("Location: /admin/login.php?timeout=1&auto=1");
 } else {
-    header("Location: /coret2/admin/login.php?logout=1");
+    header("Location: /admin/login.php?logout=1");
 }
 exit();

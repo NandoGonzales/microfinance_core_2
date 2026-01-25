@@ -922,7 +922,7 @@ function resetInactivityTimer() {
 
 function logoutDueToInactivity() {
     alert('You have been logged out due to 2 minutes of inactivity.');
-    window.location.href = '/coret2/admin/login.php?timeout=1&auto=1';
+    window.location.href = '/admin/login.php?timeout=1&auto=1';
 }
 
 resetInactivityTimer();

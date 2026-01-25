@@ -95,11 +95,11 @@
 
 <?php
 // Base URL to your project root
-$base_url = '/coret2/admin';
+$base_url = '/admin';
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // Check what actual files/folders exist
-$admin_path = $_SERVER['DOCUMENT_ROOT'] . '/coret2/admin/';
+$admin_path = $_SERVER['DOCUMENT_ROOT'] . '/admin';
 
 // Function to check if a file or folder exists
 function path_exists($path) {
@@ -119,7 +119,7 @@ function path_exists($path) {
             </li>
             <li>
                 <!-- Check if folder exists, otherwise use direct file -->
-                <?php if (path_exists('/coret2/admin/Loan-Portfolio-Risk-Management/')): ?>
+                <?php if (path_exists('/admin/Loan-Portfolio-Risk-Management/')): ?>
                     <a href="<?= $base_url ?>/Loan-Portfolio-Risk-Management/index.php" <?= strpos($_SERVER['REQUEST_URI'], 'Loan-Portfolio-Risk-Management') !== false ? 'class="active"' : '' ?>>
                         <i class="bi bi-wallet2"></i> Loan Portfolio
                     </a>
@@ -130,7 +130,7 @@ function path_exists($path) {
                 <?php endif; ?>
             </li>
             <li>
-                <?php if (path_exists('/coret2/admin/Repayment-Tracker/')): ?>
+                <?php if (path_exists('/admin/Repayment-Tracker/')): ?>
                     <a href="<?= $base_url ?>/Repayment-Tracker/repayments.php" <?= strpos($_SERVER['REQUEST_URI'], 'Repayment-Tracker/repayments.php') !== false ? 'class="active"' : '' ?>>
                         <i class="bi bi-cash-stack"></i> Repayment Tracker
                     </a>
@@ -141,7 +141,7 @@ function path_exists($path) {
                 <?php endif; ?>
             </li>
             <li>
-                <?php if (path_exists('/coret2/admin/Saving-Collection-Monitoring/')): ?>
+                <?php if (path_exists('/admin/Saving-Collection-Monitoring/')): ?>
                     <a href="<?= $base_url ?>/Saving-Collection-Monitoring/savings_monitoring.php" <?= strpos($_SERVER['REQUEST_URI'], 'Saving-Collection-Monitoring/savings_monitoring.php') !== false ? 'class="active"' : '' ?>>
                         <i class="bi bi-piggy-bank"></i> Savings Monitoring
                     </a>
@@ -152,7 +152,7 @@ function path_exists($path) {
                 <?php endif; ?>
             </li>
             <li>
-                <?php if (path_exists('/coret2/admin/Disbursement-Fund-Allocation-Tracker/')): ?>
+                <?php if (path_exists('/admin/Disbursement-Fund-Allocation-Tracker/')): ?>
                     <a href="<?= $base_url ?>/Disbursement-Fund-Allocation-Tracker/disbursement_tracker.php" <?= strpos($_SERVER['REQUEST_URI'], 'Disbursement-Fund-Allocation-Tracker/disbursement_tracker.php') !== false ? 'class="active"' : '' ?>>
                         <i class="bi bi-cash-stack"></i> Disbursement Tracker
                     </a>
@@ -163,7 +163,7 @@ function path_exists($path) {
                 <?php endif; ?>
             </li>
             <li>
-                <?php if (path_exists('/coret2/admin/Compliance-Audith-Trail-System/')): ?>
+                <?php if (path_exists('/admin/Compliance-Audith-Trail-System/')): ?>
                     <a href="<?= $base_url ?>/Compliance-Audith-Trail-System/compliance_logs.php" <?= strpos($_SERVER['REQUEST_URI'], 'Compliance-Audith-Trail-System/compliance_logs.php') !== false ? 'class="active"' : '' ?>>
                         <i class="bi bi-shield-check"></i> Compliance & Audit Trail
                     </a>
@@ -179,7 +179,7 @@ function path_exists($path) {
 
             <!-- User Management Section -->
             <li>
-                <?php if (path_exists('/coret2/admin/User-Management-Role-Based-Access/')): ?>
+                <?php if (path_exists('/admin/User-Management-Role-Based-Access/')): ?>
                     <a href="<?= $base_url ?>/User-Management-Role-Based-Access/user_management.php" <?= strpos($_SERVER['REQUEST_URI'], 'User-Management/user_management.php') !== false ? 'class="active"' : '' ?>>
                         <i class="bi bi-people-fill"></i> User Management
                     </a>
@@ -190,7 +190,7 @@ function path_exists($path) {
                 <?php endif; ?>
             </li>
             <li>
-                <?php if (path_exists('/coret2/admin/User-Management-Role-Based-Access/')): ?>
+                <?php if (path_exists('/admin/User-Management-Role-Based-Access/')): ?>
                     <a href="<?= $base_url ?>/User-Management-Role-Based-Access/role_permissions.php" <?= strpos($_SERVER['REQUEST_URI'], 'User-Management/role_permissions.php') !== false ? 'class="active"' : '' ?>>
                         <i class="bi bi-shield-lock"></i> Role Permissions
                     </a>
@@ -201,7 +201,7 @@ function path_exists($path) {
                 <?php endif; ?>
             </li>
             <li>
-                <?php if (path_exists('/coret2/admin/User-Management-Role-Based-Access/')): ?>
+                <?php if (path_exists('/admin/User-Management-Role-Based-Access/')): ?>
                     <a href="<?= $base_url ?>/User-Management-Role-Based-Access/permission_logs.php" <?= strpos($_SERVER['REQUEST_URI'], 'User-Management/permission_logs.php') !== false ? 'class="active"' : '' ?>>
                         <i class="bi bi-activity"></i> Permission Logs
                     </a>

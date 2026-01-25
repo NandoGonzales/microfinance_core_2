@@ -168,7 +168,7 @@ if ($user_id) {
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <a href="/coreT2/admin/logout.php" class="btn btn-danger">Logout</a>
+        <a href="/admin/login.php?timeout=1&auto=1" class="btn btn-danger">Logout</a>
       </div>
     </div>
   </div>
@@ -187,7 +187,7 @@ if ($user_id) {
     }
 
     try {
-      const res = await fetch('/coreT2/admin/inc/settings_update.php', {
+      const res = await fetch('/admin/inc/settings_update.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
