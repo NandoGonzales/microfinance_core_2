@@ -6,5 +6,5 @@ if(!defined('base_app')) define('base_app', str_replace('\\','/',__DIR__).'/' );
 if(!defined('DB_SERVER')) define('DB_SERVER',"localhost:3306");
 if(!defined('DB_USERNAME')) define('DB_USERNAME',"core2_coreTREWQmic2");
 if(!defined('DB_PASSWORD')) define('DB_PASSWORD',"Gn4uJbGgVW8OrP");
-if(!defined('DB_NAME')) define('DB_NAME',"core2_coret2_db");
+if(!defined('DB_NAME')) define('DB_NAME',"core2_db");
 ?>
