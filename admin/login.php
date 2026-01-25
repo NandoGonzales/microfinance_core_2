@@ -1,5 +1,5 @@
 <?php
-require_once('../initialize_.php');
+require_once('../initialize.php');
 require_once(__DIR__ . '/inc/log_audit_trial.php');
 
 if (session_status() === PHP_SESSION_NONE) session_start();
