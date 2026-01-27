@@ -1,6 +1,6 @@
 <?php
 // ============================================================================
-// savings_action.php - Secure backend for Savings Monitoring (Enhanced)
+// savings_action.php - Secure backend for Savings Monitoring (FIXED)
 // Supports clickable summary cards filtering + type + date range filters
 // ============================================================================
 
@@ -58,7 +58,7 @@ function getSummary($conn, $where = '', $params = [], $types = '')
     } else {
         $whereDeposit = "WHERE transaction_type='Deposit'";
     }
-    $sql = "SELECT COALESCE(SUM(amount),0) AS total_deposits FROM savings $whereDeposit";
+    $sql = "SELECT COUNT(*) AS total_deposits FROM savings $whereDeposit";
     if ($params && count($params) > 0) {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param($types, ...$params);
@@ -75,7 +75,7 @@ function getSummary($conn, $where = '', $params = [], $types = '')
     } else {
         $whereWithdraw = "WHERE transaction_type='Withdrawal'";
     }
-    $sql = "SELECT COALESCE(SUM(amount),0) AS total_withdrawals FROM savings $whereWithdraw";
+    $sql = "SELECT COUNT(*) AS total_withdrawals FROM savings $whereWithdraw";
     if ($params && count($params) > 0) {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param($types, ...$params);
@@ -126,14 +126,15 @@ try {
                 $types .= 'sss';
             }
 
-            // Card filter
-            if ($filter === 'total_deposit' || $filter === 'deposit') {
+            // Card filter - FIXED: Handle 'all' filter properly
+            if ($filter === 'deposit') {
                 $where[] = "s.transaction_type='Deposit'";
-            } elseif ($filter === 'total_withdraw' || $filter === 'withdrawal') {
+            } elseif ($filter === 'withdrawal') {
                 $where[] = "s.transaction_type='Withdrawal'";
             }
+            // If filter is 'all' or 'balance', don't add any filter
 
-            // Type filter
+            // Type filter (from dropdown)
             if ($type !== '') {
                 $where[] = "s.transaction_type=?";
                 $params[] = $type;
@@ -177,16 +178,21 @@ try {
 
             // Total count for pagination
             $countSql = "SELECT COUNT(*) AS cnt FROM savings s " . $whereSql;
-            $countStmt = $conn->prepare($countSql);
+            $total = 0;
+            
             if (count($params) > 2) {
                 // Remove last two params (offset, limit)
                 $countParams = array_slice($params, 0, -2);
                 $countTypes = substr($types, 0, -2);
+                $countStmt = $conn->prepare($countSql);
                 $countStmt->bind_param($countTypes, ...$countParams);
+                $countStmt->execute();
+                $total = intval($countStmt->get_result()->fetch_assoc()['cnt'] ?? 0);
+                $countStmt->close();
+            } else {
+                $result = $conn->query($countSql);
+                $total = intval($result->fetch_assoc()['cnt'] ?? 0);
             }
-            $countStmt->execute();
-            $total = intval($countStmt->get_result()->fetch_assoc()['cnt'] ?? 0);
-            $countStmt->close();
 
             $total_pages = $limit > 0 ? ceil($total / $limit) : 1;
 
@@ -195,6 +201,7 @@ try {
             $summaryTypes = count($params) > 2 ? substr($types, 0, -2) : '';
             $summaryWhere = str_replace('s.', '', $whereSql); // Remove table alias for summary
 
+            // FIXED: Return proper pagination structure with total_records
             echo json_encode([
                 'status' => 'success',
                 'rows' => $rows,
@@ -202,7 +209,7 @@ try {
                 'pagination' => [
                     'current_page' => $page,
                     'total_pages' => max(1, $total_pages),
-                    'total' => $total
+                    'total_records' => $total  // FIXED: Added this field
                 ]
             ]);
             break;
@@ -317,9 +324,10 @@ try {
                     $types .= 'sss';
                 }
 
-                if ($filter === 'total_deposit' || $filter === 'deposit') {
+                // FIXED: Handle 'all' filter
+                if ($filter === 'deposit') {
                     $where[] = "s.transaction_type='Deposit'";
-                } elseif ($filter === 'total_withdraw' || $filter === 'withdrawal') {
+                } elseif ($filter === 'withdrawal') {
                     $where[] = "s.transaction_type='Withdrawal'";
                 }
 
