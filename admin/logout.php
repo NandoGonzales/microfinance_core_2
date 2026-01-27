@@ -45,10 +45,10 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// If auto-logout, redirect with auto parameter
+// ✅ FIXED - Use relative paths
 if (isset($_GET['auto'])) {
-    header("Location: /admin/login.php?timeout=1&auto=1");
+    header("Location: login.php?timeout=1&auto=1");
 } else {
-    header("Location: /admin/login.php?logout=1");
+    header("Location: login.php?logout=1");
 }
 exit();

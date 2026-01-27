@@ -6,27 +6,75 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Redirect if already logged in
 if (isset($_SESSION['userdata'])) {
-    // 🔴 FIXED: Use absolute path
+    // FIXED: Use absolute path
     header("Location: /admin/dashboard.php");
     exit();
 }
 
 $error_message = "";
 
+// Handle successful logout
+if (isset($_GET['logout'])) {
+    echo '<script>
+        document.addEventListener("DOMContentLoaded", function() {
+            Swal.fire({
+                icon: "success",
+                title: "Logged Out Successfully",
+                text: "You have been successfully logged out. See you again soon!",
+                timer: 2500,
+                showConfirmButton: false
+            });
+        });
+    </script>';
+}
+
+// Handle session timeout/auto logout
+if (isset($_GET['timeout']) || isset($_GET['auto'])) {
+    echo '<script>
+        document.addEventListener("DOMContentLoaded", function() {
+            Swal.fire({
+                icon: "info",
+                title: "Session Expired",
+                text: "You have been logged out due to inactivity. Please login again.",
+                showConfirmButton: true,
+                confirmButtonText: "Login",
+                timer: 4000,
+                timerProgressBar: true
+            });
+        });
+    </script>';
+}
+
+$error_message = "";
+
 // Show timeout message if redirected due to session expiration
 if (isset($_GET['timeout'])) {
-    $error_message = "Your session has expired due to inactivity. Please login again.";
+    // Don't set $error_message, use SweetAlert directly
+    echo '<script>
+        document.addEventListener("DOMContentLoaded", function() {
+            Swal.fire({
+                icon: "warning",
+                title: "Session Expired",
+                text: "Your session has expired due to inactivity. Please login again.",
+                timer: 3000,
+                showConfirmButton: true,
+                confirmButtonText: "OK"
+            });
+        });
+    </script>';
 }
 
 // Show auto-logout message if redirected due to inactivity
 if (isset($_GET['auto'])) {
     echo '<script>
-        Swal.fire({
-            icon: "info",
-            title: "Auto Logout",
-            text: "You were automatically logged out due to 2 minutes of inactivity.",
-            timer: 3000,
-            showConfirmButton: false
+        document.addEventListener("DOMContentLoaded", function() {
+            Swal.fire({
+                icon: "info",
+                title: "Auto Logout",
+                text: "You were automatically logged out due to 2 minutes of inactivity.",
+                timer: 3000,
+                showConfirmButton: false
+            });
         });
     </script>';
 }
