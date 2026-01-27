@@ -41,10 +41,10 @@ $allowed_roles = [
     'Repayment_Tracker'       => ['Super Admin', 'Admin', 'Staff'],
     'savings_monitoring'   => ['Super Admin', 'Admin', 'Staff'],
     'disbursement_tracker' => ['Super Admin', 'Admin', 'Staff'],
-    'compliance_logs'      => ['Super Admin', 'Admin'],
-    'user_management'      => ['Super Admin'],
-    'role_permissions'     => ['Super Admin'],
-    'permission_logs'      => ['Super Admin']
+    'compliance_logs'      => ['Super Admin', 'Admin'],  // Staff cannot access
+    'user_management'      => ['Super Admin'],  // Only Super Admin
+    'role_permissions'     => ['Super Admin'],  // Only Super Admin
+    'permission_logs'      => ['Super Admin']   // Only Super Admin
 ];
 
 // ============================================================================
@@ -136,9 +136,16 @@ if (!function_exists('hasPermission')) {
         // Super Admin has access to everything
         if ($role === 'Super Admin') return true;
 
-        // FIXED: Complete permission mapping for all roles
+        // ========================================================================
+        // PERMISSION RULES:
+        // - Super Admin: Full access (view, add, edit, delete) to ALL modules
+        // - Admin: VIEW ONLY for Dashboard, Loan, Repayments, Savings, Disbursement, Compliance Logs
+        // - Staff: VIEW ONLY for Dashboard, Loan, Repayments, Savings, Disbursement
+        // ========================================================================
+        
         $rolePermissions = [
             'Super Admin' => [
+                'Dashboard' => ['view', 'add', 'edit', 'delete'],
                 'User Management' => ['view', 'add', 'edit', 'delete'],
                 'Savings Monitoring' => ['view', 'add', 'edit', 'delete'],
                 'Loan Portfolio' => ['view', 'add', 'edit', 'delete'],
@@ -151,20 +158,22 @@ if (!function_exists('hasPermission')) {
                 'Role Permissions' => ['view', 'add', 'edit', 'delete'],
             ],
             'Admin' => [
-                'Savings Monitoring' => ['view', 'add', 'edit', 'delete'],  // ✅ FIXED: Added full access
-                'Loan Portfolio' => ['view', 'add', 'edit'],
-                'Repayment Tracker' => ['view', 'add', 'edit'],
-                'Disbursement Tracker' => ['view', 'add', 'edit'],
-                'Compliance & Audit Trail' => ['view'],
-                'Compliance Logs' => ['view'],
-                'Audit Trail' => ['view'],
+                'Dashboard' => ['view'],  // VIEW ONLY
+                'Loan Portfolio' => ['view'],  // VIEW ONLY
+                'Repayment Tracker' => ['view'],  // VIEW ONLY
+                'Savings Monitoring' => ['view'],  // VIEW ONLY
+                'Disbursement Tracker' => ['view'],  // VIEW ONLY
+                'Compliance Logs' => ['view'],  // VIEW ONLY
+                'Compliance & Audit Trail' => ['view'],  // VIEW ONLY
+                'Permission Logs' => ['view'],  // VIEW ONLY
+                'Audit Trail' => ['view'],  // VIEW ONLY
             ],
             'Staff' => [
-                'Dashboard' => ['view'],
-                'Savings Monitoring' => ['view', 'add'],  // ✅ FIXED: Added Savings Monitoring
-                'Loan Portfolio' => ['view', 'add'],
-                'Repayment Tracker' => ['view', 'add'],
-                'Disbursement Tracker' => ['view', 'add'],
+                'Dashboard' => ['view'],  // VIEW ONLY
+                'Loan Portfolio' => ['view'],  // VIEW ONLY
+                'Repayment Tracker' => ['view'],  // VIEW ONLY
+                'Savings Monitoring' => ['view'],  // VIEW ONLY
+                'Disbursement Tracker' => ['view'],  // VIEW ONLY
             ],
         ];
 
@@ -184,7 +193,7 @@ if (!function_exists('hasPermission')) {
                     INSERT INTO audit_trail (user_id, action_type, module_name, remarks, ip_address, action_time)
                     VALUES (?, 'Access Denied', ?, ?, ?, NOW())
                 ");
-                $remarks = "User '$username' tried to $action $module without permission.";
+                $remarks = "User '$username' (role: $role) tried to $action $module without permission.";
                 $stmt->bind_param('isss', $userId, $module, $remarks, $ip);
                 $stmt->execute();
                 $stmt->close();
