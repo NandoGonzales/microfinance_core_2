@@ -61,7 +61,7 @@ function showAccessDenied($module)
         Swal.fire({
             icon: 'error',
             title: 'Access Denied!',
-            text: 'You don’t have permission to access {$pretty}.',
+            text: 'You don't have permission to access {$pretty}.',
             confirmButtonText: 'Return to Dashboard',
             confirmButtonColor: '#d33'
         }).then(() => {
@@ -133,43 +133,65 @@ function getCurrentUserRole()
 if (!function_exists('hasPermission')) {
     function hasPermission($conn, $role, $module, $action)
     {
+        // Super Admin has access to everything
         if ($role === 'Super Admin') return true;
 
+        // FIXED: Complete permission mapping for all roles
         $rolePermissions = [
             'Super Admin' => [
-                'User Management' => ['view', 'edit'],
-                'Savings Monitoring' => ['view', 'add', 'edit'],
-                'Loan Portfolio' => ['view'],
-                
+                'User Management' => ['view', 'add', 'edit', 'delete'],
+                'Savings Monitoring' => ['view', 'add', 'edit', 'delete'],
+                'Loan Portfolio' => ['view', 'add', 'edit', 'delete'],
+                'Repayment Tracker' => ['view', 'add', 'edit', 'delete'],
+                'Disbursement Tracker' => ['view', 'add', 'edit', 'delete'],
+                'Compliance & Audit Trail' => ['view', 'add', 'edit', 'delete'],
+                'Compliance Logs' => ['view', 'add', 'edit', 'delete'],
+                'Permission Logs' => ['view', 'add', 'edit', 'delete'],
+                'Audit Trail' => ['view', 'add', 'edit', 'delete'],
+                'Role Permissions' => ['view', 'add', 'edit', 'delete'],
             ],
             'Admin' => [
+                'Savings Monitoring' => ['view', 'add', 'edit', 'delete'],  // ✅ FIXED: Added full access
+                'Loan Portfolio' => ['view', 'add', 'edit'],
+                'Repayment Tracker' => ['view', 'add', 'edit'],
+                'Disbursement Tracker' => ['view', 'add', 'edit'],
+                'Compliance & Audit Trail' => ['view'],
                 'Compliance Logs' => ['view'],
-                'Permission Logs' => ['view'],
                 'Audit Trail' => ['view'],
             ],
             'Staff' => [
                 'Dashboard' => ['view'],
-                'Loan Portfolio' => ['view'],
+                'Savings Monitoring' => ['view', 'add'],  // ✅ FIXED: Added Savings Monitoring
+                'Loan Portfolio' => ['view', 'add'],
+                'Repayment Tracker' => ['view', 'add'],
+                'Disbursement Tracker' => ['view', 'add'],
             ],
         ];
 
+        // Check if role and module exist in permissions
         $hasAccess = isset($rolePermissions[$role][$module]) &&
             in_array($action, $rolePermissions[$role][$module]);
 
+        // Log access denial to audit trail
         if (!$hasAccess) {
             if (session_status() === PHP_SESSION_NONE) session_start();
             $userId = $_SESSION['userdata']['user_id'] ?? null;
             $username = $_SESSION['userdata']['username'] ?? 'Unknown';
             $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-            $stmt = $conn->prepare("
-                INSERT INTO audit_trail (user_id, action_type, module_name, remarks, ip_address, action_time)
-                VALUES (?, 'Access Denied', ?, ?, ?, NOW())
-            ");
-            $remarks = "User '$username' tried to $action $module without permission.";
-            $stmt->bind_param('isss', $userId, $module, $remarks, $ip);
-            $stmt->execute();
-            $stmt->close();
+            try {
+                $stmt = $conn->prepare("
+                    INSERT INTO audit_trail (user_id, action_type, module_name, remarks, ip_address, action_time)
+                    VALUES (?, 'Access Denied', ?, ?, ?, NOW())
+                ");
+                $remarks = "User '$username' tried to $action $module without permission.";
+                $stmt->bind_param('isss', $userId, $module, $remarks, $ip);
+                $stmt->execute();
+                $stmt->close();
+            } catch (Exception $e) {
+                // Silent fail - don't break the app
+                error_log("Failed to log access denial: " . $e->getMessage());
+            }
         }
 
         return $hasAccess;
