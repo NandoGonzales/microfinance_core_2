@@ -13,23 +13,6 @@ if (isset($_SESSION['userdata'])) {
 
 $error_message = "";
 
-// Handle successful logout
-if (isset($_GET['logout'])) {
-    echo '<script>
-        document.addEventListener("DOMContentLoaded", function() {
-            Swal.fire({
-                icon: "success",
-                title: "Logged Out Successfully",
-                text: "You have been successfully logged out. See you again soon!",
-                timer: 2500,
-                showConfirmButton: false
-            });
-        });
-    </script>';
-}
-
-$error_message = "";
-
 // Show timeout message if redirected due to session expiration
 if (isset($_GET['timeout'])) {
     // Don't set $error_message, use SweetAlert directly
