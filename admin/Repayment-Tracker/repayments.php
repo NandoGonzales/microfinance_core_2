@@ -1,21 +1,16 @@
 <?php
-// === Include layout files ===
+// === Initialize database and session FIRST ===
+require_once(__DIR__ . '/../../initialize_coreT2.php');
+require_once(__DIR__ . '/../inc/sess_auth.php');
+require_once(__DIR__ . '/../inc/check_auth.php');
+
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+// === Include layout files AFTER database is ready ===
 include(__DIR__ . '/../inc/header.php');
 include(__DIR__ . '/../inc/navbar.php');
 include(__DIR__ . '/../inc/sidebar.php');
-include(__DIR__ . '/../inc/footer.php');
-
-require_once(__DIR__ . '/../../initialize_coreT2.php');
-require_once(__DIR__ . '/../inc/sess_auth.php');
-require_once __DIR__ . '/../inc/check_auth.php';
-
-if (session_status() === PHP_SESSION_NONE) session_start();
 ?>
-
-<!-- Add Chart.js and jsPDF CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
 <style>
     body {
@@ -807,3 +802,5 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         loadData();
     });
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>

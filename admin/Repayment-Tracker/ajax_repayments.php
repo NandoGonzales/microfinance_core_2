@@ -3,12 +3,10 @@ require_once(__DIR__ . '/../../initialize_coreT2.php');
 header('Content-Type: application/json; charset=utf-8');
 
 try {
-    $pdo = new PDO(
-        "mysql:host=localhost;dbname=coret2_db;charset=utf8mb4",
-        "root",
-        "",
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
-    );
+    // ✅ Use the existing MySQLi connection from initialize_coreT2.php
+    if (!$conn || $conn->connect_error) {
+        throw new Exception('Database connection failed: ' . ($conn->connect_error ?? 'Unknown error'));
+    }
 
     // Get parameters
     $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -23,24 +21,41 @@ try {
 
     // --- SUMMARY CARDS ---
     $summary = [
-        'total_loans' => (int)$pdo->query("SELECT COUNT(*) FROM loan_portfolio")->fetchColumn(),
-        'active_loans' => (int)$pdo->query("SELECT COUNT(*) FROM loan_portfolio WHERE status='Active'")->fetchColumn(),
+        'total_loans' => 0,
+        'active_loans' => 0,
         'overdue_loans' => 0,
         'at_risk_loans' => 0
     ];
 
-    // Calculate overdue loans
-    $overdueQuery = $pdo->query("
-        SELECT COUNT(DISTINCT lp.loan_id) 
+    // Total loans
+    $result = $conn->query("SELECT COUNT(*) as cnt FROM loan_portfolio");
+    if ($result) {
+        $row = $result->fetch_assoc();
+        $summary['total_loans'] = (int)$row['cnt'];
+    }
+
+    // Active loans
+    $result = $conn->query("SELECT COUNT(*) as cnt FROM loan_portfolio WHERE status='Active'");
+    if ($result) {
+        $row = $result->fetch_assoc();
+        $summary['active_loans'] = (int)$row['cnt'];
+    }
+
+    // Overdue loans
+    $result = $conn->query("
+        SELECT COUNT(DISTINCT lp.loan_id) as cnt
         FROM loan_portfolio lp 
         INNER JOIN loan_schedule ls ON lp.loan_id = ls.loan_id 
         WHERE ls.status = 'Overdue'
     ");
-    $summary['overdue_loans'] = (int)$overdueQuery->fetchColumn();
+    if ($result) {
+        $row = $result->fetch_assoc();
+        $summary['overdue_loans'] = (int)$row['cnt'];
+    }
 
-    // Calculate at-risk loans (3+ overdue payments or defaulted)
-    $atRiskQuery = $pdo->query("
-        SELECT COUNT(DISTINCT lp.loan_id)
+    // At-risk loans (3+ overdue or defaulted)
+    $result = $conn->query("
+        SELECT COUNT(DISTINCT lp.loan_id) as cnt
         FROM loan_portfolio lp
         WHERE lp.status = 'Defaulted' OR (
             SELECT COUNT(*) 
@@ -48,11 +63,14 @@ try {
             WHERE ls.loan_id = lp.loan_id AND ls.status = 'Overdue'
         ) >= 3
     ");
-    $summary['at_risk_loans'] = (int)$atRiskQuery->fetchColumn();
+    if ($result) {
+        $row = $result->fetch_assoc();
+        $summary['at_risk_loans'] = (int)$row['cnt'];
+    }
 
     // --- LOAN STATUS DISTRIBUTION ---
     $statusData = ['labels' => [], 'values' => []];
-    $statusQuery = $pdo->query("
+    $result = $conn->query("
         SELECT status, COUNT(*) as cnt 
         FROM loan_portfolio 
         WHERE status IS NOT NULL
@@ -67,17 +85,19 @@ try {
                 ELSE 6
             END
     ");
-    foreach ($statusQuery as $row) {
-        $statusData['labels'][] = $row['status'];
-        $statusData['values'][] = (int)$row['cnt'];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $statusData['labels'][] = $row['status'];
+            $statusData['values'][] = (int)$row['cnt'];
+        }
     }
 
     // --- RISK BREAKDOWN ---
     $riskData = ['labels' => ['Low', 'Medium', 'High'], 'values' => [0, 0, 0]];
 
-    // Low risk: Active/Approved loans with 0 overdue
-    $lowRiskQuery = $pdo->query("
-        SELECT COUNT(DISTINCT lp.loan_id)
+    // Low risk
+    $result = $conn->query("
+        SELECT COUNT(DISTINCT lp.loan_id) as cnt
         FROM loan_portfolio lp
         WHERE lp.status IN ('Active', 'Approved')
         AND (
@@ -86,11 +106,14 @@ try {
             WHERE ls.loan_id = lp.loan_id AND ls.status = 'Overdue'
         ) = 0
     ");
-    $riskData['values'][0] = (int)$lowRiskQuery->fetchColumn();
+    if ($result) {
+        $row = $result->fetch_assoc();
+        $riskData['values'][0] = (int)$row['cnt'];
+    }
 
-    // Medium risk: 1-2 overdue payments
-    $mediumRiskQuery = $pdo->query("
-        SELECT COUNT(DISTINCT lp.loan_id)
+    // Medium risk
+    $result = $conn->query("
+        SELECT COUNT(DISTINCT lp.loan_id) as cnt
         FROM loan_portfolio lp
         WHERE lp.status IN ('Active', 'Approved')
         AND (
@@ -99,11 +122,14 @@ try {
             WHERE ls.loan_id = lp.loan_id AND ls.status = 'Overdue'
         ) BETWEEN 1 AND 2
     ");
-    $riskData['values'][1] = (int)$mediumRiskQuery->fetchColumn();
+    if ($result) {
+        $row = $result->fetch_assoc();
+        $riskData['values'][1] = (int)$row['cnt'];
+    }
 
-    // High risk: 3+ overdue or Defaulted
-    $highRiskQuery = $pdo->query("
-        SELECT COUNT(DISTINCT lp.loan_id)
+    // High risk
+    $result = $conn->query("
+        SELECT COUNT(DISTINCT lp.loan_id) as cnt
         FROM loan_portfolio lp
         WHERE lp.status = 'Defaulted' OR (
             lp.status IN ('Active', 'Approved')
@@ -114,40 +140,47 @@ try {
             ) >= 3
         )
     ");
-    $riskData['values'][2] = (int)$highRiskQuery->fetchColumn();
+    if ($result) {
+        $row = $result->fetch_assoc();
+        $riskData['values'][2] = (int)$row['cnt'];
+    }
 
     // --- GET LOAN TYPES ---
     $loanTypes = [];
-    $typeQuery = $pdo->query("
+    $result = $conn->query("
         SELECT DISTINCT loan_type 
         FROM loan_portfolio 
         WHERE loan_type IS NOT NULL 
         ORDER BY loan_type
     ");
-    foreach ($typeQuery as $row) {
-        $loanTypes[] = $row['loan_type'];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $loanTypes[] = $row['loan_type'];
+        }
     }
 
     // --- BUILD WHERE CLAUSES FOR FILTERING ---
     $whereClauses = [];
-    $params = [];
+    $searchParam = '';
+    $statusParam = '';
+    $typeParam = '';
 
     // Search filter
     if ($search !== '') {
-        $whereClauses[] = "(lp.loan_id LIKE :search OR m.full_name LIKE :search OR lp.loan_type LIKE :search)";
-        $params[':search'] = "%$search%";
+        $searchParam = $conn->real_escape_string($search);
+        $whereClauses[] = "(lp.loan_id LIKE '%$searchParam%' OR m.full_name LIKE '%$searchParam%' OR lp.loan_type LIKE '%$searchParam%')";
     }
 
     // Status filter
     if ($statusFilter !== '') {
-        $whereClauses[] = "lp.status = :status";
-        $params[':status'] = $statusFilter;
+        $statusParam = $conn->real_escape_string($statusFilter);
+        $whereClauses[] = "lp.status = '$statusParam'";
     }
 
     // Type filter
     if ($typeFilter !== '') {
-        $whereClauses[] = "lp.loan_type = :type";
-        $params[':type'] = $typeFilter;
+        $typeParam = $conn->real_escape_string($typeFilter);
+        $whereClauses[] = "lp.loan_type = '$typeParam'";
     }
 
     // Risk filter
@@ -179,7 +212,7 @@ try {
 
     // --- COUNT TOTAL RECORDS ---
     $countSql = "
-        SELECT COUNT(DISTINCT lp.loan_id) 
+        SELECT COUNT(DISTINCT lp.loan_id) as cnt
         FROM loan_portfolio lp
         LEFT JOIN members m ON lp.member_id = m.member_id
         LEFT JOIN (
@@ -190,12 +223,12 @@ try {
         ) ls ON lp.loan_id = ls.loan_id
         $whereSql
     ";
-    $countStmt = $pdo->prepare($countSql);
-    foreach ($params as $k => $v) {
-        $countStmt->bindValue($k, $v);
+    $result = $conn->query($countSql);
+    $totalRecords = 0;
+    if ($result) {
+        $row = $result->fetch_assoc();
+        $totalRecords = (int)$row['cnt'];
     }
-    $countStmt->execute();
-    $totalRecords = (int)$countStmt->fetchColumn();
     $totalPages = $totalRecords > 0 ? ceil($totalRecords / $limit) : 1;
 
     // --- FETCH LOANS ---
@@ -235,17 +268,16 @@ try {
         ) ls ON lp.loan_id = ls.loan_id
         $whereSql
         ORDER BY lp.loan_id DESC
-        LIMIT :offset, :limit
+        LIMIT $offset, $limit
     ";
 
-    $stmt = $pdo->prepare($sql);
-    foreach ($params as $k => $v) {
-        $stmt->bindValue($k, $v);
+    $result = $conn->query($sql);
+    $loans = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $loans[] = $row;
+        }
     }
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->execute();
-    $loans = $stmt->fetchAll();
 
     // --- GET ALL LOANS FOR PDF EXPORT ---
     $allLoansSql = "
@@ -275,10 +307,16 @@ try {
             WHERE status = 'Overdue'
             GROUP BY loan_id
         ) ls ON lp.loan_id = ls.loan_id
+        $whereSql
         ORDER BY lp.loan_id DESC
     ";
-    $allLoansStmt = $pdo->query($allLoansSql);
-    $allLoans = $allLoansStmt->fetchAll();
+    $result = $conn->query($allLoansSql);
+    $allLoans = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $allLoans[] = $row;
+        }
+    }
 
     // --- RETURN JSON ---
     echo json_encode([
@@ -296,12 +334,6 @@ try {
         ]
     ], JSON_UNESCAPED_UNICODE);
 
-} catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode([
-        'error' => true,
-        'message' => 'Database error: ' . $e->getMessage()
-    ]);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
