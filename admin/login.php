@@ -78,8 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'User logged in successfully from IP: ' . $_SERVER['REMOTE_ADDR']
                 );
 
-                // ✅ FIXED: Removed extra slash
-                header("Location: /admin/dashboard.php");
+                $redirect_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http")
+                    . "://" . $_SERVER['HTTP_HOST'] . "/admin/dashboard.php";
+                header("Location: " . $redirect_url);
                 exit();
             }
         } else {
