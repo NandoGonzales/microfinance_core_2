@@ -13,18 +13,18 @@ if (isset($_SESSION['userdata'])) {
 
 $error_message = "";
 
-// Show timeout message if redirected due to session expiration
-if (isset($_GET['timeout'])) {
-    // Don't set $error_message, use SweetAlert directly
+// Only show alert for timeout/auto, NOT for manual logout
+if (isset($_GET['timeout']) || isset($_GET['auto'])) {
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
             Swal.fire({
-                icon: "warning",
+                icon: "info",
                 title: "Session Expired",
-                text: "Your session has expired due to inactivity. Please login again.",
-                timer: 3000,
+                text: "You have been logged out due to inactivity. Please login again.",
                 showConfirmButton: true,
-                confirmButtonText: "OK"
+                confirmButtonText: "Login",
+                timer: 4000,
+                timerProgressBar: true
             });
         });
     </script>';
