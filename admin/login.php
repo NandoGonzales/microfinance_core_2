@@ -28,23 +28,6 @@ if (isset($_GET['logout'])) {
     </script>';
 }
 
-// Handle session timeout/auto logout
-if (isset($_GET['timeout']) || isset($_GET['auto'])) {
-    echo '<script>
-        document.addEventListener("DOMContentLoaded", function() {
-            Swal.fire({
-                icon: "info",
-                title: "Session Expired",
-                text: "You have been logged out due to inactivity. Please login again.",
-                showConfirmButton: true,
-                confirmButtonText: "Login",
-                timer: 4000,
-                timerProgressBar: true
-            });
-        });
-    </script>';
-}
-
 $error_message = "";
 
 // Show timeout message if redirected due to session expiration
