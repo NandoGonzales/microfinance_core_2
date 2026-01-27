@@ -12,6 +12,11 @@ include(__DIR__ . '/../inc/navbar.php');
 include(__DIR__ . '/../inc/sidebar.php');
 ?>
 
+<!-- Add Chart.js and jsPDF CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
 <style>
     body {
         font-family: sans-serif;
@@ -49,15 +54,8 @@ include(__DIR__ . '/../inc/sidebar.php');
     }
 
     @keyframes pulse {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.85;
-        }
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.85; }
     }
 
     .stat-card.active {
@@ -276,8 +274,7 @@ include(__DIR__ . '/../inc/sidebar.php');
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let loanStatusChart, riskChart;
-        let currentPage = 1,
-            limit = 10;
+        let currentPage = 1, limit = 10;
         let currentFilters = {
             search: '',
             status: '',
@@ -292,22 +289,25 @@ include(__DIR__ . '/../inc/sidebar.php');
         const paginationInfo = document.getElementById('paginationInfo');
         const filterIndicator = document.getElementById('filterIndicator');
 
-        // --- FIXED: Define escapeHtml BEFORE it's used ---
+        // ✅ Helper function - defined FIRST
         function escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // --- FIXED: Define onViewLoan function BEFORE attaching listeners ---
-        function onViewLoan(e) {
-            const loan_id = e.currentTarget.dataset.id;
-            console.log('Clicked View button for loan ID:', loan_id);
+        // ✅ Event delegation handler for view buttons
+        function handleViewButtonClick(e) {
+            const button = e.target.closest('.view-loan-btn');
+            if (!button) return;
 
+            const loan_id = button.dataset.id;
+            console.log('Clicked View button for loan ID:', loan_id);
+            
             const content = document.getElementById('loanDetailsContent');
             content.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p class="mt-2">Loading...</p></div>';
 
-            // FIXED: Correct path to loan_crud.php
             const url = `../Loan-Portfolio-Risk-Management/loan_crud.php?loan_id=${loan_id}`;
             console.log('Fetching URL:', url);
 
@@ -489,17 +489,11 @@ include(__DIR__ . '/../inc/sidebar.php');
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    display: false
-                                }
-                            },
+                            plugins: { legend: { display: false } },
                             scales: {
                                 y: {
                                     beginAtZero: true,
-                                    ticks: {
-                                        stepSize: 1
-                                    }
+                                    ticks: { stepSize: 1 }
                                 }
                             }
                         }
@@ -516,11 +510,7 @@ include(__DIR__ . '/../inc/sidebar.php');
                     const filteredLabels = [];
                     const filteredValues = [];
                     const filteredColors = [];
-                    const colors = {
-                        'Low': '#198754',
-                        'Medium': '#ffc107',
-                        'High': '#dc3545'
-                    };
+                    const colors = { 'Low': '#198754', 'Medium': '#ffc107', 'High': '#dc3545' };
 
                     data.risk_breakdown.labels.forEach((label, index) => {
                         const value = data.risk_breakdown.values[index];
@@ -536,19 +526,12 @@ include(__DIR__ . '/../inc/sidebar.php');
                             type: 'doughnut',
                             data: {
                                 labels: filteredLabels,
-                                datasets: [{
-                                    data: filteredValues,
-                                    backgroundColor: filteredColors
-                                }]
+                                datasets: [{ data: filteredValues, backgroundColor: filteredColors }]
                             },
                             options: {
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'bottom'
-                                    }
-                                }
+                                plugins: { legend: { position: 'bottom' } }
                             }
                         });
                     }
@@ -562,7 +545,7 @@ include(__DIR__ . '/../inc/sidebar.php');
             document.getElementById('recordCount').textContent =
                 total > 0 ? `Showing ${start}-${end} of ${total} records` : 'No records found';
 
-            // Table
+            // ✅ FIXED: Table with event delegation
             tbody.innerHTML = '';
             if (data.loans && data.loans.length > 0) {
                 data.loans.forEach(l => {
@@ -595,10 +578,10 @@ include(__DIR__ . '/../inc/sidebar.php');
                     tbody.appendChild(row);
                 });
 
-                // FIXED: Attach event listeners AFTER rows are added
-                document.querySelectorAll('.view-loan-btn').forEach(btn => {
-                    btn.addEventListener('click', onViewLoan);
-                });
+                // ✅ CRITICAL: Attach event listener to tbody (event delegation)
+                tbody.removeEventListener('click', handleViewButtonClick);
+                tbody.addEventListener('click', handleViewButtonClick);
+                
             } else {
                 const filterMsg = currentFilters.cardFilter !== 'all' ?
                     ` matching "${filterIndicator.textContent}"` : '';
@@ -618,20 +601,14 @@ include(__DIR__ . '/../inc/sidebar.php');
             prev.textContent = 'Prev';
             prev.className = 'btn btn-sm btn-outline-primary';
             prev.disabled = current === 1;
-            prev.onclick = () => {
-                currentPage--;
-                loadData();
-            };
+            prev.onclick = () => { currentPage--; loadData(); };
             paginationControls.appendChild(prev);
 
             const next = document.createElement('button');
             next.textContent = 'Next';
             next.className = 'btn btn-sm btn-outline-primary';
             next.disabled = current === total;
-            next.onclick = () => {
-                currentPage++;
-                loadData();
-            };
+            next.onclick = () => { currentPage++; loadData(); };
             paginationControls.appendChild(next);
         }
 
@@ -685,13 +662,7 @@ include(__DIR__ . '/../inc/sidebar.php');
         });
 
         document.getElementById('clearFilters').addEventListener('click', () => {
-            currentFilters = {
-                search: '',
-                status: '',
-                risk: '',
-                type: '',
-                cardFilter: 'all'
-            };
+            currentFilters = { search: '', status: '', risk: '', type: '', cardFilter: 'all' };
             document.getElementById('searchInput').value = '';
             document.getElementById('statusFilter').value = '';
             document.getElementById('riskFilter').value = '';
@@ -710,9 +681,7 @@ include(__DIR__ . '/../inc/sidebar.php');
                 return;
             }
 
-            const {
-                jsPDF
-            } = window.jspdf;
+            const { jsPDF } = window.jspdf;
             const doc = new jsPDF('l', 'mm', 'a4');
 
             doc.setFontSize(18);
@@ -759,22 +728,11 @@ include(__DIR__ . '/../inc/sidebar.php');
 
             doc.autoTable({
                 startY: currentFilters.cardFilter !== 'all' ? 48 : 44,
-                head: [
-                    ['ID', 'Member', 'Type', 'Principal', 'Rate', 'Term', 'Start', 'Status', 'Overdue', 'Risk']
-                ],
+                head: [['ID', 'Member', 'Type', 'Principal', 'Rate', 'Term', 'Start', 'Status', 'Overdue', 'Risk']],
                 body: tableData,
-                styles: {
-                    fontSize: 8,
-                    cellPadding: 2,
-                },
-                headStyles: {
-                    fillColor: [13, 110, 253],
-                    textColor: 255,
-                    fontStyle: 'bold'
-                },
-                alternateRowStyles: {
-                    fillColor: [245, 245, 245]
-                }
+                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [13, 110, 253], textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [245, 245, 245] }
             });
 
             const pageCount = doc.internal.getNumberOfPages();
@@ -782,9 +740,7 @@ include(__DIR__ . '/../inc/sidebar.php');
                 doc.setPage(i);
                 doc.setFontSize(8);
                 doc.setTextColor(150);
-                doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 10, {
-                    align: 'center'
-                });
+                doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 10, { align: 'center' });
             }
 
             doc.save(`repayment_tracker_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -803,4 +759,4 @@ include(__DIR__ . '/../inc/sidebar.php');
     });
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<?php include(__DIR__ . '/../inc/footer.php'); ?>
