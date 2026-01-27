@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // Successful login
                 session_regenerate_id(true);
-                
+
                 // Set user data
                 $_SESSION['userdata'] = [
                     'user_id' => $user['user_id'],
@@ -69,17 +69,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['session_start'] = time();  // Session start time
 
                 $_SESSION['login_success'] = "Welcome back, " . ($user['full_name'] ?? 'User') . "!";
-                
+
                 // Log successful login
                 log_audit_trial(
-                    $user['user_id'], 
-                    'Login', 
-                    'Authentication', 
+                    $user['user_id'],
+                    'Login',
+                    'Authentication',
                     'User logged in successfully from IP: ' . $_SERVER['REMOTE_ADDR']
                 );
 
-                // 🔴 FIXED: Use absolute path
-                header("Location: //admin/dashboard.php");
+                // ✅ FIXED: Removed extra slash
+                header("Location: /admin/dashboard.php");
                 exit();
             }
         } else {
@@ -158,4 +158,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </script>
     <?php endif; ?>
 </body>
+
 </html>
