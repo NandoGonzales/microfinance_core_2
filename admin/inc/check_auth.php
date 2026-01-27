@@ -9,8 +9,8 @@ if (!isset($_SESSION['userdata']) || empty($_SESSION['userdata']['user_id'])) {
     // Store the current URL to redirect back after login
     $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
     
-    // Redirect to login with correct path
-    header("Location: /admin/login.php");
+    // ✅ FIXED: Use relative path
+    header("Location: login.php");
     exit();
 }
 ?>

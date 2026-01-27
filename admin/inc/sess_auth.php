@@ -83,15 +83,8 @@ function handleSessionTimeout()
     // Destroy the session
     session_destroy();
 
-    // Calculate base URL dynamically
-    $base_url = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'];
-    $script_path = dirname($_SERVER['SCRIPT_NAME']);
-
-    // Extract project folder from path
-    $path_parts = explode('/', trim($script_path, '/'));
-    $project_folder = isset($path_parts[0]) ? $path_parts[0] : '';
-
-    header("Location: $base_url/$project_folder/admin/login.php?timeout=1");
+    // ✅ FIXED: Use relative redirect
+    header("Location: login.php?timeout=1");
     exit();
 }
 
@@ -117,7 +110,7 @@ if (!isset($_SESSION['userdata'])) {
         'Attempted access to: ' . $link
     );
 
-    // Redirect to login page
+    // ✅ FIXED: Use relative redirect
     header("Location: login.php");
     exit();
 }
@@ -132,13 +125,9 @@ if (isset($_SESSION['userdata']) && $is_login_page) {
         'User attempted to visit login page while logged in.'
     );
 
-    // Use your existing redirect function
-    if (function_exists('redirect')) {
-        redirect('dashboard.php');
-    } else {
-        header("Location: dashboard.php");
-    }
-    exit;
+    // ✅ FIXED: Use relative redirect
+    header("Location: dashboard.php");
+    exit();
 }
 
 // 🔹 3. Access control by user role (optional)
@@ -174,3 +163,4 @@ if (isset($_SESSION['userdata']) && isset($_SESSION['last_activity'])) {
         'timeout_warning' => ($remaining_time <= 30)
     ];
 }
+?>
