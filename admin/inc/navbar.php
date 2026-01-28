@@ -168,7 +168,7 @@ if ($user_id) {
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <a href="logout.php" class="btn btn-danger">Logout</a>
+       <a href="/admin/logout.php" class="btn btn-danger">Logout</a>
       </div>
     </div>
   </div>
