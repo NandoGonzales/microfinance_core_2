@@ -11,17 +11,29 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 // ============================================================================
 if (!isset($_SESSION['userdata'])) {
     echo "
-    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+    <!DOCTYPE html>
+    <html lang='en'>
+    <head>
+        <meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>Session Expired</title>
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+    </head>
+    <body style='background-color: #f5f5f5;'>
     <script>
         Swal.fire({
             icon: 'warning',
             title: 'Session Expired',
             text: 'Please log in again to continue.',
-            confirmButtonColor: '#3085d6'
+            confirmButtonColor: '#3085d6',
+            background: '#ffffff',
+            allowOutsideClick: false
         }).then(() => {
             window.location.href = '../login.php';
         });
-    </script>";
+    </script>
+    </body>
+    </html>";
     exit();
 }
 
@@ -65,34 +77,18 @@ function showAccessDenied($module)
         <meta name='viewport' content='width=device-width, initial-scale=1.0'>
         <title>Access Denied</title>
         <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-        <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css'>
-        <style>
-            body {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-        </style>
     </head>
-    <body>
+    <body style='background-color: #f5f5f5; margin: 0; padding: 0;'>
     <script>
         Swal.fire({
             icon: 'error',
             title: '🚫 Access Denied!',
-            html: '<div style=\"text-align: center;\"><p class=\"text-danger fw-bold mb-2\">You don\'t have permission to access <strong>{$pretty}</strong>.</p><p class=\"text-muted\">This module is restricted to Super Admin only.</p><p class=\"text-muted small\">Please contact your system administrator if you need access.</p></div>',
+            html: '<p style=\"color: #dc3545; font-weight: bold; margin-bottom: 10px;\">You don\\'t have permission to access <strong>{$pretty}</strong>.</p><p style=\"color: #6c757d; margin-bottom: 10px;\">This module is restricted to Super Admin only.</p><p style=\"color: #6c757d; font-size: 0.9rem;\">Please contact your system administrator if you need access.</p>',
             confirmButtonText: '← Return to Dashboard',
             confirmButtonColor: '#dc3545',
             allowOutsideClick: false,
             allowEscapeKey: false,
-            customClass: {
-                popup: 'swal2-show',
-                icon: 'swal2-icon-show'
-            },
-            showClass: {
-                popup: 'animate__animated animate__fadeInDown'
-            }
+            background: '#ffffff'
         }).then(() => {
             window.location.href = '../dashboard.php';
         });
