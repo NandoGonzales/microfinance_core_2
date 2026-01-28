@@ -53,19 +53,16 @@ $allowed_roles = [
     'Repayment_Tracker'       => ['Super Admin', 'Admin', 'Staff'],
     'savings_monitoring'   => ['Super Admin', 'Admin', 'Staff'],
     'disbursement_tracker' => ['Super Admin', 'Admin', 'Staff'],
-    
+
     // ✅ Super Admin AND Admin can access Compliance Logs (NOT Staff)
     'compliance_logs'      => ['Super Admin', 'Admin'],  // ✅ Admin can access, Staff CANNOT
-    
+
     // ❌ ONLY SUPER ADMIN CAN ACCESS THESE:
     'user_management'      => ['Super Admin'],  // ❌ Admin and Staff CANNOT access
     'role_permissions'     => ['Super Admin'],  // ❌ Admin and Staff CANNOT access
     'permission_logs'      => ['Super Admin']   // ❌ Admin and Staff CANNOT access
 ];
 
-// ============================================================================
-//  SweetAlert Access Denied Function
-// ============================================================================
 function showAccessDenied($module)
 {
     $pretty = ucfirst(str_replace('_', ' ', $module));
@@ -77,18 +74,51 @@ function showAccessDenied($module)
         <meta name='viewport' content='width=device-width, initial-scale=1.0'>
         <title>Access Denied</title>
         <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+        <style>
+            body {
+                background-color: #f5f5f5;
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            }
+            .swal2-icon.swal2-error {
+                border-color: #dc3545 !important;
+                color: #dc3545 !important;
+            }
+            .swal2-icon.swal2-error [class^='swal2-x-mark-line'] {
+                background-color: #dc3545 !important;
+            }
+        </style>
     </head>
-    <body style='background-color: #f5f5f5; margin: 0; padding: 0;'>
+    <body>
     <script>
         Swal.fire({
             icon: 'error',
-            title: '🚫 Access Denied!',
-            html: '<p style=\"color: #dc3545; font-weight: bold; margin-bottom: 10px;\">You don\\'t have permission to access <strong>{$pretty}</strong>.</p><p style=\"color: #6c757d; margin-bottom: 10px;\">This module is restricted to Super Admin only.</p><p style=\"color: #6c757d; font-size: 0.9rem;\">Please contact your system administrator if you need access.</p>',
+            title: '<span style=\"color: #333;\">🚫 Access Denied!</span>',
+            html: `
+                <div style=\"text-align: center; padding: 10px 0;\">
+                    <p style=\"color: #dc3545; font-weight: bold; font-size: 1.1rem; margin: 15px 0 10px 0;\">
+                        You don't have permission to access <strong>{$pretty}</strong>.
+                    </p>
+                    <p style=\"color: #6c757d; font-size: 1rem; margin: 10px 0;\">
+                        This module is restricted to Super Admin only.
+                    </p>
+                    <p style=\"color: #6c757d; font-size: 0.95rem; margin: 10px 0;\">
+                        Please contact your system administrator if you need access.
+                    </p>
+                </div>
+            `,
             confirmButtonText: '← Return to Dashboard',
             confirmButtonColor: '#dc3545',
             allowOutsideClick: false,
             allowEscapeKey: false,
-            background: '#ffffff'
+            background: '#ffffff',
+            customClass: {
+                popup: 'animated-popup',
+                confirmButton: 'custom-confirm-btn'
+            },
+            width: '500px',
+            padding: '2rem'
         }).then(() => {
             window.location.href = '../dashboard.php';
         });
@@ -163,15 +193,6 @@ if (!function_exists('hasPermission')) {
         // Super Admin has access to everything
         if ($role === 'Super Admin') return true;
 
-        // ========================================================================
-        // PERMISSION RULES:
-        // - Super Admin: Full access (view, add, edit, delete) to ALL modules
-        // - Admin: VIEW ONLY for Dashboard, Loan, Repayments, Savings, Disbursement, Compliance Logs
-        // - Staff: VIEW ONLY for Dashboard, Loan, Repayments, Savings, Disbursement
-        // - Admin: NO ACCESS to User Management, Role Permissions, Permission Logs
-        // - Staff: NO ACCESS to User Management, Role Permissions, Permission Logs, Compliance Logs
-        // ========================================================================
-        
         $rolePermissions = [
             'Super Admin' => [
                 'Dashboard' => ['view', 'add', 'edit', 'delete'],
