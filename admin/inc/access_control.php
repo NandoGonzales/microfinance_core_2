@@ -101,7 +101,7 @@ function showAccessDenied($module)
                         You don't have permission to access <strong>{$pretty}</strong>.
                     </p>
                     <p style=\"color: #6c757d; font-size: 1rem; margin: 10px 0;\">
-                        This module is restricted to Super Admin only.
+                        restricted by Super Admin only.
                     </p>
                     <p style=\"color: #6c757d; font-size: 0.95rem; margin: 10px 0;\">
                         Please contact your system administrator if you need access.
