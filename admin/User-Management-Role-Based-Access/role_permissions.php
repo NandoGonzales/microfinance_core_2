@@ -1,6 +1,11 @@
 <?php
 require_once(__DIR__ . '/../../initialize_coreT2.php');
 require_once(__DIR__ . '/../inc/sess_auth.php');
+require_once(__DIR__ . '/../inc/access_control.php');
+require_once(__DIR__ . '/../inc/check_auth.php');
+
+// ✅ Use centralized access control (shows RED modal with detailed message)
+checkPermission('role_permissions');
 
 // ==========================
 // Fetch user's role from DB
@@ -16,31 +21,6 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $user = $result->fetch_assoc();
-
-if (!$user || $user['role'] != 'Super Admin') {
-  echo "
-  <html>
-  <head>
-    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-  </head>
-  <body>
-  <script>
-    Swal.fire({
-      icon: 'error',
-      title: 'Access Denied',
-      text: 'Only Super Admin can manage permissions.',
-      confirmButtonText: 'Return to Dashboard',
-      confirmButtonColor: '#3085d6',
-      backdrop: true
-    }).then(() => {
-      window.location.href = '../dashboard.php';
-    });
-  </script>
-  </body>
-  </html>
-  ";
-  exit;
-}
 
 // Fetch all roles for dropdown
 $roles_query = "SELECT role_id, role_name FROM user_roles ORDER BY role_name";
@@ -62,12 +42,6 @@ while ($module = $modules_result->fetch_assoc()) {
 include(__DIR__ . '/../inc/header.php');
 include(__DIR__ . '/../inc/navbar.php');
 include(__DIR__ . '/../inc/sidebar.php');
-
-// ✅ Enforce role-based access check
-require_once(__DIR__ . '/../inc/access_control.php');
-require_once __DIR__ . '/../inc/check_auth.php';
-
-checkPermission('role_permissions');  
 ?>
 
 <main class="main-content" id="main-content">
