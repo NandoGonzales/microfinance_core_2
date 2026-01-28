@@ -41,10 +41,14 @@ $allowed_roles = [
     'Repayment_Tracker'       => ['Super Admin', 'Admin', 'Staff'],
     'savings_monitoring'   => ['Super Admin', 'Admin', 'Staff'],
     'disbursement_tracker' => ['Super Admin', 'Admin', 'Staff'],
-    'compliance_logs'      => ['Super Admin', 'Admin'],  // Staff cannot access
-    'user_management'      => ['Super Admin'],  // Only Super Admin
-    'role_permissions'     => ['Super Admin'],  // Only Super Admin
-    'permission_logs'      => ['Super Admin']   // Only Super Admin
+    
+    // ✅ Super Admin AND Admin can access Compliance Logs (NOT Staff)
+    'compliance_logs'      => ['Super Admin', 'Admin'],  // ✅ Admin can access, Staff CANNOT
+    
+    // ❌ ONLY SUPER ADMIN CAN ACCESS THESE:
+    'user_management'      => ['Super Admin'],  // ❌ Admin and Staff CANNOT access
+    'role_permissions'     => ['Super Admin'],  // ❌ Admin and Staff CANNOT access
+    'permission_logs'      => ['Super Admin']   // ❌ Admin and Staff CANNOT access
 ];
 
 // ============================================================================
@@ -54,21 +58,47 @@ function showAccessDenied($module)
 {
     $pretty = ucfirst(str_replace('_', ' ', $module));
     echo "
-    <html><head>
+    <!DOCTYPE html>
+    <html lang='en'>
+    <head>
+        <meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>Access Denied</title>
         <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-    </head><body>
+        <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css'>
+        <style>
+            body {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        </style>
+    </head>
+    <body>
     <script>
         Swal.fire({
             icon: 'error',
-            title: 'Access Denied!',
-            text: 'You don't have permission to access {$pretty}.',
-            confirmButtonText: 'Return to Dashboard',
-            confirmButtonColor: '#d33'
+            title: '🚫 Access Denied!',
+            html: '<div style=\"text-align: center;\"><p class=\"text-danger fw-bold mb-2\">You don\'t have permission to access <strong>{$pretty}</strong>.</p><p class=\"text-muted\">This module is restricted to Super Admin only.</p><p class=\"text-muted small\">Please contact your system administrator if you need access.</p></div>',
+            confirmButtonText: '← Return to Dashboard',
+            confirmButtonColor: '#dc3545',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            customClass: {
+                popup: 'swal2-show',
+                icon: 'swal2-icon-show'
+            },
+            showClass: {
+                popup: 'animate__animated animate__fadeInDown'
+            }
         }).then(() => {
             window.location.href = '../dashboard.php';
         });
     </script>
-    </body></html>";
+    </body>
+    </html>";
     exit();
 }
 
@@ -88,6 +118,7 @@ function logPermission($conn, $user_id, $module_name, $action_name, $status = 'S
         $stmt->close();
     } catch (Exception $e) {
         // Silent fail — do not break app
+        error_log("Permission log error: " . $e->getMessage());
     }
 }
 
@@ -141,6 +172,8 @@ if (!function_exists('hasPermission')) {
         // - Super Admin: Full access (view, add, edit, delete) to ALL modules
         // - Admin: VIEW ONLY for Dashboard, Loan, Repayments, Savings, Disbursement, Compliance Logs
         // - Staff: VIEW ONLY for Dashboard, Loan, Repayments, Savings, Disbursement
+        // - Admin: NO ACCESS to User Management, Role Permissions, Permission Logs
+        // - Staff: NO ACCESS to User Management, Role Permissions, Permission Logs, Compliance Logs
         // ========================================================================
         
         $rolePermissions = [
@@ -163,10 +196,10 @@ if (!function_exists('hasPermission')) {
                 'Repayment Tracker' => ['view'],  // VIEW ONLY
                 'Savings Monitoring' => ['view'],  // VIEW ONLY
                 'Disbursement Tracker' => ['view'],  // VIEW ONLY
-                'Compliance Logs' => ['view'],  // VIEW ONLY
-                'Compliance & Audit Trail' => ['view'],  // VIEW ONLY
-                'Permission Logs' => ['view'],  // VIEW ONLY
-                'Audit Trail' => ['view'],  // VIEW ONLY
+                'Compliance Logs' => ['view'],  // ✅ VIEW ONLY - Admin can access
+                'Compliance & Audit Trail' => ['view'],  // ✅ VIEW ONLY - Admin can access
+                'Audit Trail' => ['view'],  // ✅ VIEW ONLY - Admin can access
+                // ❌ NO ACCESS to: User Management, Role Permissions, Permission Logs
             ],
             'Staff' => [
                 'Dashboard' => ['view'],  // VIEW ONLY
@@ -174,6 +207,7 @@ if (!function_exists('hasPermission')) {
                 'Repayment Tracker' => ['view'],  // VIEW ONLY
                 'Savings Monitoring' => ['view'],  // VIEW ONLY
                 'Disbursement Tracker' => ['view'],  // VIEW ONLY
+                // ❌ NO ACCESS to: User Management, Role Permissions, Permission Logs, Compliance Logs
             ],
         ];
 
