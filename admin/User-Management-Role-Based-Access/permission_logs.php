@@ -7,7 +7,8 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
 require_once(__DIR__ . '/../inc/access_control.php');
 require_once(__DIR__ . '/../inc/check_auth.php');
 
-
+// ✅ Use the new RBAC check function
+checkPermission('permission_logs');
 ?>
 
 <main class="main-content" id="main-content">
