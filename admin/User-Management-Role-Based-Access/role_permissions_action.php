@@ -18,7 +18,10 @@ $user_role = $user['role'] ?? '';
 if ($user_role !== 'Super Admin') {
     echo json_encode([
         'success' => false,
-        'message' => 'Access Denied: Only Super Admin can manage permissions'
+        'title' => '🚫 Access Denied!',
+        'message' => 'You don\'t have permission to manage Role Permissions.',
+        'details' => 'This module is restricted to Super Admin only.',
+        'instruction' => 'Please contact your system administrator if you need access.'
     ]);
     exit();
 }
