@@ -6,14 +6,13 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Redirect if already logged in
 if (isset($_SESSION['userdata'])) {
-    // FIXED: Use absolute path
     header("Location: /admin/dashboard.php");
     exit();
 }
 
 $error_message = "";
 
-// Only show alert for timeout/auto, NOT for manual logout
+// Session expired alert
 if (isset($_GET['timeout']) || isset($_GET['auto'])) {
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -30,7 +29,7 @@ if (isset($_GET['timeout']) || isset($_GET['auto'])) {
     </script>';
 }
 
-// Show auto-logout message if redirected due to inactivity
+// Auto-logout message
 if (isset($_GET['auto'])) {
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -43,6 +42,27 @@ if (isset($_GET['auto'])) {
             });
         });
     </script>';
+}
+
+// ✅ Helper function to log to BOTH tables
+function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Success') {
+    global $conn;
+    
+    // Log to audit_trail (existing)
+    log_audit_trial($user_id, $action, $module, $remarks);
+    
+    // ✅ Also log to permission_logs
+    try {
+        $stmt = $conn->prepare("
+            INSERT INTO permission_logs (user_id, module_name, action_name, action_status, action_time)
+            VALUES (?, ?, ?, ?, NOW())
+        ");
+        $stmt->bind_param('isss', $user_id, $module, $action, $status);
+        $stmt->execute();
+        $stmt->close();
+    } catch (Exception $e) {
+        error_log("Permission log error: " . $e->getMessage());
+    }
 }
 
 // --- Login processing ---
@@ -63,33 +83,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($user['status'] !== 'Active') {
                 $error_message = "Your account is inactive. Please contact admin.";
-                log_audit_trial($user['user_id'], 'Login Failed - Inactive', 'Authentication', 'Inactive user tried login');
+                // ✅ Log to both tables
+                log_to_both_tables(
+                    $user['user_id'], 
+                    'Login Failed - Inactive', 
+                    'Authentication', 
+                    'Inactive user tried login',
+                    'Failed'
+                );
             } elseif (!password_verify($password, $user['password_hash'])) {
                 $error_message = "Invalid username or password.";
-                log_audit_trial($user['user_id'], 'Login Failed - Wrong Password', 'Authentication', 'Incorrect password');
+                // ✅ Log to both tables
+                log_to_both_tables(
+                    $user['user_id'], 
+                    'Login Failed - Wrong Password', 
+                    'Authentication', 
+                    'Incorrect password from IP: ' . $_SERVER['REMOTE_ADDR'],
+                    'Failed'
+                );
             } else {
                 // Successful login
                 session_regenerate_id(true);
 
-                // Set user data
                 $_SESSION['userdata'] = [
                     'user_id' => $user['user_id'],
+                    'username' => $user['username'],
                     'full_name' => $user['full_name'] ?? 'User',
                     'role' => $user['role'] ?? 'Member'
                 ];
 
-                // Initialize session timeout tracking
-                $_SESSION['last_activity'] = time();  // Crucial for timeout
-                $_SESSION['session_start'] = time();  // Session start time
-
+                $_SESSION['last_activity'] = time();
+                $_SESSION['session_start'] = time();
                 $_SESSION['login_success'] = "Welcome back, " . ($user['full_name'] ?? 'User') . "!";
 
-                // Log successful login
-                log_audit_trial(
+                // ✅ Log successful login to both tables
+                log_to_both_tables(
                     $user['user_id'],
                     'Login',
                     'Authentication',
-                    'User logged in successfully from IP: ' . $_SERVER['REMOTE_ADDR']
+                    'User logged in successfully from IP: ' . $_SERVER['REMOTE_ADDR'],
+                    'Success'
                 );
 
                 $redirect_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http")
@@ -99,7 +132,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             $error_message = "Invalid username or password.";
-            log_audit_trial(0, 'Login Failed - Unknown User', 'Authentication', 'Unknown username: ' . $username);
+            // ✅ Log unknown user to both tables
+            log_to_both_tables(
+                0, 
+                'Login Failed - Unknown User', 
+                'Authentication', 
+                'Unknown username: ' . $username . ' from IP: ' . $_SERVER['REMOTE_ADDR'],
+                'Failed'
+            );
         }
         $stmt->close();
     }
@@ -160,7 +200,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 
-    <!-- SweetAlert for errors -->
     <?php if (!empty($error_message)) : ?>
         <script>
             Swal.fire({
