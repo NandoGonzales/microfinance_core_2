@@ -7,7 +7,7 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-// Session timeout configuration (2 minutes = 120 seconds)
+// Session timeout configuration (2 minutes = 120 seconds for testing, use 1800 for production)
 define('SESSION_TIMEOUT', 120);
 
 // Get current page URL
@@ -47,20 +47,46 @@ function checkSessionTimeout()
 }
 
 /**
+ * ✅ Log to BOTH tables
+ */
+function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Success') {
+    global $conn;
+    
+    // Log to audit_trail
+    log_audit($user_id, $action, $module, null, $remarks);
+    
+    // ✅ Also log to permission_logs
+    try {
+        $stmt = $conn->prepare("
+            INSERT INTO permission_logs (user_id, module_name, action_name, action_status, action_time)
+            VALUES (?, ?, ?, ?, NOW())
+        ");
+        $stmt->bind_param('isss', $user_id, $module, $action, $status);
+        $stmt->execute();
+        $stmt->close();
+    } catch (Exception $e) {
+        error_log("Permission log error: " . $e->getMessage());
+    }
+}
+
+/**
  * Handle session timeout logout
  */
 function handleSessionTimeout()
 {
+    global $conn;
+    
     $user_id = $_SESSION['userdata']['user_id'] ?? 0;
     $username = $_SESSION['userdata']['full_name'] ?? 'Unknown';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
-    // Log the timeout event
-    log_audit(
+    // ✅ Log to BOTH tables
+    log_to_both_tables(
         $user_id,
-        'Session Timeout',
+        'Session Expired',
         'Authentication',
-        null,
-        "User $username session expired due to inactivity"
+        "User $username session expired due to inactivity from IP: $ip",
+        'Failed'
     );
 
     // Clear all session data
@@ -83,8 +109,9 @@ function handleSessionTimeout()
     // Destroy the session
     session_destroy();
 
-    // ✅ FIXED: Use relative redirect
-    header("Location: login.php?timeout=1");
+    // ✅ Use absolute URL
+    $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
+    header("Location: $base_url/admin/login.php?timeout=1&auto=1");
     exit();
 }
 
@@ -101,7 +128,7 @@ if (!$is_login_page && isset($_SESSION['userdata'])) {
 }
 
 // 🔹 1. Ensure session userdata exists
-if (!isset($_SESSION['userdata'])) {
+if (!isset($_SESSION['userdata']) && !$is_login_page) {
     log_audit(
         null,                        
         'Unauthorized Access',       
@@ -110,8 +137,9 @@ if (!isset($_SESSION['userdata'])) {
         'Attempted access to: ' . $link
     );
 
-    // ✅ FIXED: Use relative redirect
-    header("Location: login.php");
+    // ✅ Use absolute URL
+    $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
+    header("Location: $base_url/admin/login.php");
     exit();
 }
 
@@ -125,35 +153,13 @@ if (isset($_SESSION['userdata']) && $is_login_page) {
         'User attempted to visit login page while logged in.'
     );
 
-    // ✅ FIXED: Use relative redirect
-    header("Location: dashboard.php");
+    // ✅ Use absolute URL
+    $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
+    header("Location: $base_url/admin/dashboard.php");
     exit();
 }
 
-// 🔹 3. Access control by user role (optional)
-$module = array('', 'admin', 'faculty', 'student');
-if (
-    isset($_SESSION['userdata']) &&
-    (strpos($link, 'index.php') || strpos($link, 'admin/')) &&
-    isset($_SESSION['userdata']['login_type']) &&
-    $_SESSION['userdata']['login_type'] != 1
-) {
-    log_audit(
-        $_SESSION['userdata']['user_id'] ?? 0,
-        'Access Denied',
-        'Authorization',
-        null,
-        'User tried to access restricted admin module.'
-    );
-
-    echo "<script>
-        alert('Access Denied!');
-        location.replace('" . base_url . $module[$_SESSION['userdata']['login_type']] . "');
-    </script>";
-    exit;
-}
-
-// 🔹 4. Add session info for JavaScript (optional)
+// 🔹 3. Add session info for JavaScript (optional)
 if (isset($_SESSION['userdata']) && isset($_SESSION['last_activity'])) {
     $remaining_time = SESSION_TIMEOUT - (time() - $_SESSION['last_activity']);
     $remaining_time = max(0, $remaining_time);
