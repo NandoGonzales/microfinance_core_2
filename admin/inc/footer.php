@@ -22,7 +22,7 @@
         function resetActivityTimer() {
             lastActivity = Date.now();
             
-            // Send AJAX request to update session
+            // Send AJAX request to update session (ABSOLUTE PATH)
             fetch('/admin/inc/update_session_activity.php', {
                 method: 'POST',
                 headers: {
