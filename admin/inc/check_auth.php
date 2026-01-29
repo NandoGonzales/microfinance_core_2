@@ -38,13 +38,39 @@ function log_session_expired($user_id, $username) {
     }
 }
 
+// ✅ Get login page path (works from any subdirectory)
+function getLoginPath($with_timeout = false) {
+    // Get the current script directory
+    $current_dir = dirname($_SERVER['SCRIPT_FILENAME']);
+    $admin_dir = dirname(dirname(__FILE__)); // /admin directory
+    
+    // Calculate relative path from current location to /admin/login.php
+    $relative_path = '../login.php';
+    
+    // Count how many levels deep we are from /admin/
+    $current_parts = explode('/', str_replace('\\', '/', $current_dir));
+    $admin_parts = explode('/', str_replace('\\', '/', $admin_dir));
+    
+    $depth = count($current_parts) - count($admin_parts);
+    
+    if ($depth > 0) {
+        $relative_path = str_repeat('../', $depth) . 'login.php';
+    }
+    
+    if ($with_timeout) {
+        $relative_path .= '?timeout=1';
+    }
+    
+    return $relative_path;
+}
+
 // Check if user is logged in
 if (!isset($_SESSION['userdata']) || empty($_SESSION['userdata']['user_id'])) {
     // Store the current URL to redirect back after login
     $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
     
-    // Redirect to login
-    header("Location: login.php");
+    // ✅ Redirect to login with correct path
+    header("Location: " . getLoginPath());
     exit();
 }
 
@@ -66,8 +92,8 @@ if (isset($_SESSION['last_activity'])) {
         $_SESSION = [];
         session_destroy();
         
-        // Redirect to login with timeout flag
-        header("Location: /admin/login.php?timeout=1");
+        // ✅ Redirect to login with correct path and timeout flag
+        header("Location: " . getLoginPath(true));
         exit();
     }
 }
