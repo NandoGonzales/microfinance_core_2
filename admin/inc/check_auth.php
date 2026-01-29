@@ -7,13 +7,22 @@ if (session_status() === PHP_SESSION_NONE) {
 // ✅ Helper function to log session expiration to BOTH tables
 function log_session_expired($user_id, $username) {
     global $conn;
-    require_once(__DIR__ . '/log_audit_trial.php');
     
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
     $remarks = "Session expired for user: $username from IP: $ip";
     
     // Log to audit_trail
-    log_audit_trial($user_id, 'Session Expired', 'Authentication', $remarks);
+    try {
+        $stmt = $conn->prepare("
+            INSERT INTO audit_trail (user_id, action_type, module_name, action_time, ip_address, remarks, compliance_status)
+            VALUES (?, 'Session Expired', 'Authentication', NOW(), ?, ?, 'Compliant')
+        ");
+        $stmt->bind_param("iss", $user_id, $ip, $remarks);
+        $stmt->execute();
+        $stmt->close();
+    } catch (Exception $e) {
+        error_log("Audit trail log error: " . $e->getMessage());
+    }
     
     // ✅ Also log to permission_logs
     try {
@@ -39,21 +48,26 @@ if (!isset($_SESSION['userdata']) || empty($_SESSION['userdata']['user_id'])) {
     exit();
 }
 
-// ✅ Check for session timeout (optional - if you want to log it separately)
+// ✅ Check for session timeout
+$timeout = 1800; // 30 minutes in seconds (adjust as needed)
+
 if (isset($_SESSION['last_activity'])) {
-    $timeout = 1800; // 30 minutes (adjust as needed)
     $time_since_activity = time() - $_SESSION['last_activity'];
     
     if ($time_since_activity > $timeout) {
-        // Log session expiration before destroying session
+        // Get user info before destroying session
         $user_id = $_SESSION['userdata']['user_id'];
         $username = $_SESSION['userdata']['full_name'] ?? $_SESSION['userdata']['username'] ?? 'User';
         
+        // Log session expiration
         log_session_expired($user_id, $username);
         
         // Destroy session
+        $_SESSION = [];
         session_destroy();
-        header("Location: login.php?timeout=1");
+        
+        // Redirect to login with timeout flag
+        header("Location: /admin/login.php?timeout=1");
         exit();
     }
 }
