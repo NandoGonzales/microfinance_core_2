@@ -12,18 +12,18 @@ if (isset($_SESSION['userdata'])) {
 
 $error_message = "";
 
-// ✅ Only show session expired alert 
+// ✅ Show session expired alert with matching style
 if (isset($_GET['auto']) && isset($_GET['timeout'])) {
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
             Swal.fire({
                 icon: "warning",
                 title: "Session Expired",
-                text: "You have been logged out due to inactivity. Please login again.",
-                showConfirmButton: true,
-                confirmButtonText: "Login",
-                timer: 4000,
-                timerProgressBar: true
+                html: "<p style=\"color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;\">You have been logged out due to 2 minutes of inactivity.</p><p style=\"color: #6c757d; font-size: 0.95rem; margin: 10px 0;\">Please log in again to continue.</p>",
+                confirmButtonText: "OK",
+                confirmButtonColor: "#3085d6",
+                allowOutsideClick: false,
+                background: "#ffffff"
             });
         });
     </script>';
@@ -38,7 +38,8 @@ if (isset($_GET['logout'])) {
                 title: "Logged Out",
                 text: "You have been logged out successfully.",
                 timer: 2000,
-                showConfirmButton: false
+                showConfirmButton: false,
+                background: "#ffffff"
             });
         });
     </script>';
@@ -207,7 +208,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 title: 'Login Failed',
                 text: '<?= addslashes($error_message) ?>',
                 timer: 2500,
-                showConfirmButton: false
+                showConfirmButton: false,
+                background: '#ffffff'
             });
         </script>
     <?php endif; ?>
