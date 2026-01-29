@@ -12,12 +12,12 @@ if (isset($_SESSION['userdata'])) {
 
 $error_message = "";
 
-// Session expired alert
-if (isset($_GET['timeout']) || isset($_GET['auto'])) {
+// ✅ Only show session expired alert 
+if (isset($_GET['auto']) && isset($_GET['timeout'])) {
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
             Swal.fire({
-                icon: "info",
+                icon: "warning",
                 title: "Session Expired",
                 text: "You have been logged out due to inactivity. Please login again.",
                 showConfirmButton: true,
@@ -29,15 +29,15 @@ if (isset($_GET['timeout']) || isset($_GET['auto'])) {
     </script>';
 }
 
-// Auto-logout message
-if (isset($_GET['auto'])) {
+// ✅ Show success message for manual logout
+if (isset($_GET['logout'])) {
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
             Swal.fire({
-                icon: "info",
-                title: "Auto Logout",
-                text: "You were automatically logged out due to 2 minutes of inactivity.",
-                timer: 3000,
+                icon: "success",
+                title: "Logged Out",
+                text: "You have been logged out successfully.",
+                timer: 2000,
                 showConfirmButton: false
             });
         });
