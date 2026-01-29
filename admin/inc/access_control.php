@@ -29,7 +29,7 @@ if (!isset($_SESSION['userdata'])) {
             background: '#ffffff',
             allowOutsideClick: false
         }).then(() => {
-            window.location.href = '../login.php';
+            window.location.href = '/admin/login.php';
         });
     </script>
     </body>
@@ -101,7 +101,7 @@ function showAccessDenied($module)
                         You don't have permission to access <strong>{$pretty}</strong>.
                     </p>
                     <p style=\"color: #6c757d; font-size: 1rem; margin: 10px 0;\">
-                        restricted by Super Admin only.
+                        This module is restricted to Super Admin only.
                     </p>
                     <p style=\"color: #6c757d; font-size: 0.95rem; margin: 10px 0;\">
                         Please contact your system administrator if you need access.
@@ -120,7 +120,7 @@ function showAccessDenied($module)
             width: '500px',
             padding: '2rem'
         }).then(() => {
-            window.location.href = '../dashboard.php';
+            window.location.href = '/admin/dashboard.php';
         });
     </script>
     </body>
