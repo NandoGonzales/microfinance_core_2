@@ -70,7 +70,7 @@ function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Suc
 }
 
 /**
- * Handle session timeout logout
+ * Handle session timeout logout with SweetAlert
  */
 function handleSessionTimeout()
 {
@@ -109,9 +109,32 @@ function handleSessionTimeout()
     // Destroy the session
     session_destroy();
 
-    // ✅ Use absolute URL
-    $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
-    header("Location: $base_url/admin/login.php?timeout=1&auto=1");
+    // ✅ Show SweetAlert and redirect
+    echo "
+    <!DOCTYPE html>
+    <html lang='en'>
+    <head>
+        <meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>Session Expired</title>
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+    </head>
+    <body style='background-color: #f5f5f5;'>
+    <script>
+        Swal.fire({
+            icon: 'warning',
+            title: 'Session Expired',
+            html: '<p style=\"color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;\">You have been logged out due to 2 minutes of inactivity.</p><p style=\"color: #6c757d; font-size: 0.95rem; margin: 10px 0;\">Please log in again to continue.</p>',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+            allowOutsideClick: false,
+            background: '#ffffff'
+        }).then(() => {
+            window.location.href = '/admin/login.php';
+        });
+    </script>
+    </body>
+    </html>";
     exit();
 }
 
