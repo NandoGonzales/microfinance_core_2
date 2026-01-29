@@ -59,11 +59,23 @@ function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Suc
     
     // ✅ Also log to permission_logs WITH IP ADDRESS
     try {
-        $stmt = $conn->prepare("
-            INSERT INTO permission_logs (user_id, module_name, action_name, action_status, ip_address, action_time)
-            VALUES (?, ?, ?, ?, ?, NOW())
-        ");
-        $stmt->bind_param('issss', $user_id, $module, $action, $status, $ip);
+        // Check if ip_address column exists
+        $result = $conn->query("SHOW COLUMNS FROM permission_logs LIKE 'ip_address'");
+        if ($result->num_rows > 0) {
+            // Column exists - use new query with IP
+            $stmt = $conn->prepare("
+                INSERT INTO permission_logs (user_id, module_name, action_name, action_status, ip_address, action_time)
+                VALUES (?, ?, ?, ?, ?, NOW())
+            ");
+            $stmt->bind_param('issss', $user_id, $module, $action, $status, $ip);
+        } else {
+            // Column doesn't exist - use old query without IP
+            $stmt = $conn->prepare("
+                INSERT INTO permission_logs (user_id, module_name, action_name, action_status, action_time)
+                VALUES (?, ?, ?, ?, NOW())
+            ");
+            $stmt->bind_param('isss', $user_id, $module, $action, $status);
+        }
         $stmt->execute();
         $stmt->close();
     } catch (Exception $e) {
@@ -72,7 +84,7 @@ function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Suc
 }
 
 /**
- * Handle session timeout logout with SweetAlert - NO OUTPUT BEFORE THIS
+ * ✅ Handle session timeout - DIRECT SWEETALERT OUTPUT
  */
 function handleSessionTimeout()
 {
@@ -111,50 +123,46 @@ function handleSessionTimeout()
     // Destroy the session
     session_destroy();
 
-    // ✅ Clear any output buffers to prevent "headers already sent" error
-    while (ob_get_level()) {
-        ob_end_clean();
-    }
+    // ✅ CRITICAL: Stop all output and show SweetAlert
+    if (ob_get_level()) ob_end_clean();
     
-    // Start fresh output buffer
-    ob_start();
-
-    // ✅ Show SweetAlert and redirect
-    ?>
-    <!DOCTYPE html>
-    <html lang='en'>
-    <head>
-        <meta charset='UTF-8'>
-        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-        <title>Session Expired</title>
-        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-        <style>
-            body {
-                background-color: #f5f5f5;
-                margin: 0;
-                padding: 0;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            }
-        </style>
-    </head>
-    <body>
-    <script>
-        Swal.fire({
-            icon: 'warning',
-            title: 'Session Expired',
-            html: '<p style="color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;">You have been logged out due to 2 minutes of inactivity.</p><p style="color: #6c757d; font-size: 0.95rem; margin: 10px 0;">Please log in again to continue.</p>',
-            confirmButtonText: 'OK',
-            confirmButtonColor: '#3085d6',
-            allowOutsideClick: false,
-            background: '#ffffff'
-        }).then(() => {
-            window.location.href = '/admin/login.php';
-        });
-    </script>
-    </body>
-    </html>
-    <?php
-    ob_end_flush();
+    // Output the SweetAlert page
+    echo '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Expired</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+    </style>
+</head>
+<body>
+<script>
+    Swal.fire({
+        icon: "warning",
+        title: "Session Expired",
+        html: "<p style=\"color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;\">You have been logged out due to 2 minutes of inactivity.</p><p style=\"color: #6c757d; font-size: 0.95rem; margin: 10px 0;\">Please log in again to continue.</p>",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#3085d6",
+        allowOutsideClick: false,
+        background: "#ffffff"
+    }).then(() => {
+        window.location.href = "/admin/login.php";
+    });
+</script>
+</body>
+</html>';
     exit();
 }
 
@@ -166,7 +174,7 @@ $is_login_page = strpos($link, 'login.php') !== false;
 // Check session timeout only if NOT on login page
 if (!$is_login_page && isset($_SESSION['userdata'])) {
     if (!checkSessionTimeout()) {
-        handleSessionTimeout();
+        handleSessionTimeout(); // ✅ This will now show SweetAlert directly
     }
 }
 
