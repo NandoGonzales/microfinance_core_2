@@ -47,21 +47,23 @@ function checkSessionTimeout()
 }
 
 /**
- * ✅ Log to BOTH tables
+ * ✅ Log to BOTH tables WITH IP ADDRESS
  */
 function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Success') {
     global $conn;
     
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+    
     // Log to audit_trail
     log_audit($user_id, $action, $module, null, $remarks);
     
-    // ✅ Also log to permission_logs
+    // ✅ Also log to permission_logs WITH IP ADDRESS
     try {
         $stmt = $conn->prepare("
-            INSERT INTO permission_logs (user_id, module_name, action_name, action_status, action_time)
-            VALUES (?, ?, ?, ?, NOW())
+            INSERT INTO permission_logs (user_id, module_name, action_name, action_status, ip_address, action_time)
+            VALUES (?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->bind_param('isss', $user_id, $module, $action, $status);
+        $stmt->bind_param('issss', $user_id, $module, $action, $status, $ip);
         $stmt->execute();
         $stmt->close();
     } catch (Exception $e) {
@@ -70,7 +72,7 @@ function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Suc
 }
 
 /**
- * Handle session timeout logout with SweetAlert
+ * Handle session timeout logout with SweetAlert - NO OUTPUT BEFORE THIS
  */
 function handleSessionTimeout()
 {
@@ -109,8 +111,16 @@ function handleSessionTimeout()
     // Destroy the session
     session_destroy();
 
+    // ✅ Clear any output buffers to prevent "headers already sent" error
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    
+    // Start fresh output buffer
+    ob_start();
+
     // ✅ Show SweetAlert and redirect
-    echo "
+    ?>
     <!DOCTYPE html>
     <html lang='en'>
     <head>
@@ -118,13 +128,21 @@ function handleSessionTimeout()
         <meta name='viewport' content='width=device-width, initial-scale=1.0'>
         <title>Session Expired</title>
         <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+        <style>
+            body {
+                background-color: #f5f5f5;
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+        </style>
     </head>
-    <body style='background-color: #f5f5f5;'>
+    <body>
     <script>
         Swal.fire({
             icon: 'warning',
             title: 'Session Expired',
-            html: '<p style=\"color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;\">You have been logged out due to 2 minutes of inactivity.</p><p style=\"color: #6c757d; font-size: 0.95rem; margin: 10px 0;\">Please log in again to continue.</p>',
+            html: '<p style="color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;">You have been logged out due to 2 minutes of inactivity.</p><p style="color: #6c757d; font-size: 0.95rem; margin: 10px 0;">Please log in again to continue.</p>',
             confirmButtonText: 'OK',
             confirmButtonColor: '#3085d6',
             allowOutsideClick: false,
@@ -134,7 +152,9 @@ function handleSessionTimeout()
         });
     </script>
     </body>
-    </html>";
+    </html>
+    <?php
+    ob_end_flush();
     exit();
 }
 
