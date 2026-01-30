@@ -101,13 +101,12 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// ✅ Redirect with appropriate message
+// ✅ Redirect with appropriate message - FIXED
 if (isset($_GET['auto'])) {
+    // Auto logout due to inactivity
     header("Location: login.php?timeout=1&auto=1");
-} elseif ($is_inactive) {
-    // ✅ SHOW INACTIVE WARNING INSTEAD OF SUCCESS
-    header("Location: login.php?logout=1&inactive=1");
 } else {
+    // All manual logouts show success message
     header("Location: login.php?logout=1");
 }
 exit();
