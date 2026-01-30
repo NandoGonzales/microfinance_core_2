@@ -77,7 +77,7 @@ switch ($action) {
             ]);
         } catch (Exception $e) {
             error_log("Error in list users: " . $e->getMessage());
-            json_out(['status' => 'error', 'msg' => 'Failed to load users']);
+            json_out(['status' => 'error', 'msg' => 'Failed to load users: ' . $e->getMessage()]);
         }
         break;
 
@@ -97,7 +97,7 @@ switch ($action) {
             json_out($user);
         } catch (Exception $e) {
             error_log("Error getting user: " . $e->getMessage());
-            json_out(['status' => 'error', 'msg' => 'Failed to retrieve user']);
+            json_out(['status' => 'error', 'msg' => 'Failed to retrieve user: ' . $e->getMessage()]);
         }
         break;
 
@@ -172,10 +172,32 @@ switch ($action) {
                 // Hash password
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 
-                // Insert new user
-                $stmt = $conn->prepare("INSERT INTO users (username, password_hash, full_name, email, role, status, date_created) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-                $stmt->bind_param('ssssss', $username, $hash, $full_name, $email, $role, $status);
+                // Insert new user - NOTE: role_id is set to NULL (auto-assigned or can be set based on your logic)
+                // If you have a roles table and need to get role_id based on role name, uncomment the section below
+                
+                /* OPTIONAL: Get role_id from roles table if you have one
+                $stmt = $conn->prepare("SELECT role_id FROM roles WHERE role_name=?");
+                $stmt->bind_param('s', $role);
+                $stmt->execute();
+                $role_result = $stmt->get_result()->fetch_assoc();
+                $role_id = $role_result['role_id'] ?? null;
+                $stmt->close();
+                */
+                
+                // For now, we'll set role_id to NULL since it's optional in your schema
+                $role_id = null;
+                
+                $stmt = $conn->prepare("INSERT INTO users (role_id, username, password_hash, full_name, email, role, status, date_created) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                $stmt->bind_param('issssss', $role_id, $username, $hash, $full_name, $email, $role, $status);
                 $ok = $stmt->execute();
+                
+                if (!$ok) {
+                    $error = $stmt->error;
+                    $stmt->close();
+                    error_log("Database error on user insert: " . $error);
+                    json_out(['status' => 'error', 'msg' => 'Database error: ' . $error]);
+                }
+                
                 $new_id = $conn->insert_id;
                 $stmt->close();
                 
@@ -247,6 +269,14 @@ switch ($action) {
                 }
                 
                 $ok = $stmt->execute();
+                
+                if (!$ok) {
+                    $error = $stmt->error;
+                    $stmt->close();
+                    error_log("Database error on user update: " . $error);
+                    json_out(['status' => 'error', 'msg' => 'Database error: ' . $error]);
+                }
+                
                 $stmt->close();
                 
                 if ($ok) {
@@ -259,7 +289,7 @@ switch ($action) {
             }
         } catch (Exception $e) {
             error_log("Error in add/edit user: " . $e->getMessage());
-            json_out(['status' => 'error', 'msg' => 'Database error occurred']);
+            json_out(['status' => 'error', 'msg' => 'Database error: ' . $e->getMessage()]);
         }
         break;
 
@@ -299,7 +329,7 @@ switch ($action) {
             }
         } catch (Exception $e) {
             error_log("Error deleting user: " . $e->getMessage());
-            json_out(['status' => 'error', 'msg' => 'Failed to delete user']);
+            json_out(['status' => 'error', 'msg' => 'Failed to delete user: ' . $e->getMessage()]);
         }
         break;
 
@@ -335,7 +365,7 @@ switch ($action) {
             }
         } catch (Exception $e) {
             error_log("Error toggling status: " . $e->getMessage());
-            json_out(['status' => 'error', 'msg' => 'Failed to update status']);
+            json_out(['status' => 'error', 'msg' => 'Failed to update status: ' . $e->getMessage()]);
         }
         break;
 
