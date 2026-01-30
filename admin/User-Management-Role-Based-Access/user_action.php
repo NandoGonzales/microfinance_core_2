@@ -169,26 +169,22 @@ switch ($action) {
                     $stmt->close();
                 }
                 
+                // Get the next available user_id (WORKAROUND for missing AUTO_INCREMENT)
+                $stmt = $conn->prepare("SELECT MAX(user_id) as max_id FROM users");
+                $stmt->execute();
+                $result = $stmt->get_result()->fetch_assoc();
+                $next_id = ($result['max_id'] ?? 0) + 1;
+                $stmt->close();
+                
                 // Hash password
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 
-                // Insert new user - NOTE: role_id is set to NULL (auto-assigned or can be set based on your logic)
-                // If you have a roles table and need to get role_id based on role name, uncomment the section below
-                
-                /* OPTIONAL: Get role_id from roles table if you have one
-                $stmt = $conn->prepare("SELECT role_id FROM roles WHERE role_name=?");
-                $stmt->bind_param('s', $role);
-                $stmt->execute();
-                $role_result = $stmt->get_result()->fetch_assoc();
-                $role_id = $role_result['role_id'] ?? null;
-                $stmt->close();
-                */
-                
-                // For now, we'll set role_id to NULL since it's optional in your schema
+                // role_id set to NULL
                 $role_id = null;
                 
-                $stmt = $conn->prepare("INSERT INTO users (role_id, username, password_hash, full_name, email, role, status, date_created) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
-                $stmt->bind_param('issssss', $role_id, $username, $hash, $full_name, $email, $role, $status);
+                // Insert new user WITH user_id specified
+                $stmt = $conn->prepare("INSERT INTO users (user_id, role_id, username, password_hash, full_name, email, role, status, date_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                $stmt->bind_param('iissssss', $next_id, $role_id, $username, $hash, $full_name, $email, $role, $status);
                 $ok = $stmt->execute();
                 
                 if (!$ok) {
@@ -198,7 +194,7 @@ switch ($action) {
                     json_out(['status' => 'error', 'msg' => 'Database error: ' . $error]);
                 }
                 
-                $new_id = $conn->insert_id;
+                $new_id = $next_id;
                 $stmt->close();
                 
                 if ($ok) {
