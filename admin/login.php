@@ -46,12 +46,13 @@ if (isset($_GET['logout'])) {
 }
 
 // ✅ Helper function to log to BOTH tables
-function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Success') {
+function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Success')
+{
     global $conn;
-    
+
     // Log to audit_trail (existing)
     log_audit_trial($user_id, $action, $module, $remarks);
-    
+
     // ✅ Also log to permission_logs
     try {
         $stmt = $conn->prepare("
@@ -86,9 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error_message = "Your account is inactive. Please contact admin.";
                 // ✅ Log to both tables
                 log_to_both_tables(
-                    $user['user_id'], 
-                    'Login Failed - Inactive', 
-                    'Authentication', 
+                    $user['user_id'],
+                    'Login Failed - Inactive',
+                    'Authentication',
                     'Inactive user tried login',
                     'Failed'
                 );
@@ -96,9 +97,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error_message = "Invalid username or password.";
                 // ✅ Log to both tables
                 log_to_both_tables(
-                    $user['user_id'], 
-                    'Login Failed - Wrong Password', 
-                    'Authentication', 
+                    $user['user_id'],
+                    'Login Failed - Wrong Password',
+                    'Authentication',
                     'Incorrect password from IP: ' . $_SERVER['REMOTE_ADDR'],
                     'Failed'
                 );
@@ -135,9 +136,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error_message = "Invalid username or password.";
             // ✅ Log unknown user to both tables
             log_to_both_tables(
-                0, 
-                'Login Failed - Unknown User', 
-                'Authentication', 
+                0,
+                'Login Failed - Unknown User',
+                'Authentication',
                 'Unknown username: ' . $username . ' from IP: ' . $_SERVER['REMOTE_ADDR'],
                 'Failed'
             );
@@ -149,6 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -183,16 +185,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             animation: float 20s infinite ease-in-out;
         }
 
-        .shape-2 { animation-delay: -5s; }
-        .shape-3 { animation-delay: -10s; }
-        .shape-4 { animation-delay: -15s; }
-        .shape-5 { animation-delay: -7s; }
+        .shape-2 {
+            animation-delay: -5s;
+        }
+
+        .shape-3 {
+            animation-delay: -10s;
+        }
+
+        .shape-4 {
+            animation-delay: -15s;
+        }
+
+        .shape-5 {
+            animation-delay: -7s;
+        }
 
         @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            25% { transform: translate(10px, -10px) rotate(5deg); }
-            50% { transform: translate(-5px, 5px) rotate(-5deg); }
-            75% { transform: translate(5px, 10px) rotate(3deg); }
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            25% {
+                transform: translate(10px, -10px) rotate(5deg);
+            }
+
+            50% {
+                transform: translate(-5px, 5px) rotate(-5deg);
+            }
+
+            75% {
+                transform: translate(5px, 10px) rotate(3deg);
+            }
         }
 
         .login-svg {
@@ -223,11 +249,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <section class="hidden lg:flex w-1/2 items-center justify-center p-12 text-white">
             <div class="flex flex-col items-center w-full py-12">
                 <div class="text-center">
-                    <img src="<?= validate_image($_settings->info('logo') ?? 'dist/img/logo.jpg') ?>" 
-                         alt="System Logo" 
-                         class="w-28 h-28 mx-auto object-contain">
+                    <img src="<?= validate_image($_settings->info('logo') ?? 'dist/img/logo.jpg') ?>"
+                        alt="System Logo"
+                        class="w-28 h-28 mx-auto object-contain">
                     <h1 class="text-4xl font-bold mt-4"><?= $_settings->info('system_name') ?? 'Microfinance HR' ?></h1>
                     <p class="text-white/80"><?= $_settings->info('system_tagline') ?? 'Human Resource Management' ?></p>
+                </div>
+
+                <div class="relative w-full max-w-2xl h-96 my-6">
+                    <img src="assets/images/login/illustration-1.svg" alt="Illustration 1" class="login-svg absolute inset-0 w-full h-full object-contain">
+                    <img src="assets/images/login/illustration-2.svg" alt="Illustration 2" class="login-svg absolute inset-0 w-full h-full object-contain">
+                    <img src="assets/images/login/illustration-3.svg" alt="Illustration 3" class="login-svg absolute inset-0 w-full h-full object-contain">
+                    <img src="assets/images/login/illustration-4.svg" alt="Illustration 4" class="login-svg absolute inset-0 w-full h-full object-contain">
+                    <img src="assets/images/login/illustration-5.svg" alt="Illustration 5" class="login-svg absolute inset-0 w-full h-full object-contain">
                 </div>
 
                 <!-- Illustration Carousel (Optional - add your images) -->
@@ -235,7 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <!-- Add your illustrations here -->
                     <div class="login-svg active absolute inset-0 w-full h-full flex items-center justify-center">
                         <svg class="w-64 h-64 text-white/20" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
                         </svg>
                     </div>
                 </div>
@@ -269,10 +303,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </svg>
                             </div>
                             <input id="username" name="username" type="text" placeholder="Enter your username"
-                                   class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm
+                                class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm
                                           focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary
                                           transition-all duration-200"
-                                   required autofocus />
+                                required autofocus />
                         </div>
                     </div>
 
@@ -283,31 +317,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
                                     </path>
                                 </svg>
                             </div>
 
                             <input id="password" name="password" type="password" placeholder="Enter your password"
-                                   class="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm
+                                class="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm
                                           focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary
                                           transition-all duration-200"
-                                   required />
+                                required />
 
                             <div id="password-toggle"
-                                 class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer select-none transition-transform duration-150">
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer select-none transition-transform duration-150">
                                 <!-- Eye Open -->
                                 <svg id="eye-open" class="h-5 w-5 text-gray-400 hover:text-brand-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                 </svg>
 
                                 <!-- Eye Closed -->
                                 <svg id="eye-closed" class="h-5 w-5 text-gray-400 hover:text-brand-primary transition-colors hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.269-2.943-9.543-7a9.966 9.966 0 012.257-3.592m3.086-2.16A9.956 9.956 0 0112 5c4.478 0 8.269 2.943 9.543 7a9.97 9.97 0 01-4.043 5.197M15 12a3 3 0 00-4.5-2.598M9 12a3 3 0 004.5 2.598M3 3l18 18"></path>
+                                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.269-2.943-9.543-7a9.966 9.966 0 012.257-3.592m3.086-2.16A9.956 9.956 0 0112 5c4.478 0 8.269 2.943 9.543 7a9.97 9.97 0 01-4.043 5.197M15 12a3 3 0 00-4.5-2.598M9 12a3 3 0 004.5 2.598M3 3l18 18"></path>
                                 </svg>
                             </div>
                         </div>
@@ -315,7 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <!-- Sign In Button -->
                     <button type="submit"
-                            class="w-full bg-brand-primary hover:bg-brand-primary-hover text-white font-bold py-3 px-4 rounded-lg
+                        class="w-full bg-brand-primary hover:bg-brand-primary-hover text-white font-bold py-3 px-4 rounded-lg
                                    transition-all duration-300 shadow-lg
                                    transform active:translate-y-0 active:scale-[0.99]">
                         Sign In
@@ -377,4 +411,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </script>
 </body>
+
 </html>
