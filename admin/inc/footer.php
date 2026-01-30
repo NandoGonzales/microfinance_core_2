@@ -14,9 +14,9 @@
     // Session timeout handler with SweetAlert
     document.addEventListener('DOMContentLoaded', function() {
         let sessionTimeout = 120; // 2 minutes in seconds
-        let warningTime = 30; // Show warning at 30 seconds
         let countdownInterval;
         let lastActivity = Date.now();
+        let sessionExpiredShown = false; // Prevent multiple alerts
 
         // Reset activity timer on user interaction
         function resetActivityTimer() {
@@ -31,31 +31,50 @@
                 body: JSON.stringify({
                     action: 'update_activity'
                 })
-            }).catch(() => {
+            })
+            .then(response => response.json())
+            .then(data => {
+                // ✅ Check if session is still valid
+                if (data.session_valid === false && !sessionExpiredShown) {
+                    // Session expired on server side
+                    clearInterval(countdownInterval);
+                    sessionExpiredShown = true;
+                    showSessionExpired();
+                }
+            })
+            .catch(() => {
                 // Silently fail if server not reachable
             });
         }
 
-        // Check session timeout
+        // Show session expired alert
+        function showSessionExpired() {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Session Expired',
+                html: '<p style="color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;">You have been logged out due to 2 minutes of inactivity.</p><p style="color: #6c757d; font-size: 0.95rem; margin: 10px 0;">Please log in again to continue.</p>',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                background: '#ffffff'
+            }).then(() => {
+                window.location.href = '/admin/login.php';
+            });
+        }
+
+        // Check session timeout (client-side)
         function checkSessionTimeout() {
+            if (sessionExpiredShown) return; // Already showing alert
+            
             const elapsed = Math.floor((Date.now() - lastActivity) / 1000);
             const remaining = sessionTimeout - elapsed;
 
             if (remaining <= 0) {
                 // Session expired - show SweetAlert
                 clearInterval(countdownInterval);
-                
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Session Expired',
-                    html: '<p style="color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;">You have been logged out due to 2 minutes of inactivity.</p><p style="color: #6c757d; font-size: 0.95rem; margin: 10px 0;">Please log in again to continue.</p>',
-                    confirmButtonText: 'OK',
-                    confirmButtonColor: '#3085d6',
-                    allowOutsideClick: false,
-                    background: '#ffffff'
-                }).then(() => {
-                    window.location.href = '/admin/login.php';
-                });
+                sessionExpiredShown = true;
+                showSessionExpired();
             }
         }
 
