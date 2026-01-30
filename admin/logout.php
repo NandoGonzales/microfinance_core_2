@@ -27,17 +27,47 @@ function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Suc
     }
 }
 
+// ✅ CHECK IF USER IS INACTIVE BEFORE LOGOUT
+$is_inactive = false;
+
 // Log the logout if user is logged in
 if (!empty($_SESSION['userdata']['user_id'])) {
     $user_id = $_SESSION['userdata']['user_id'];
     $username = $_SESSION['userdata']['full_name'] ?? $_SESSION['userdata']['username'] ?? 'User';
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
+    // ✅ CHECK USER STATUS IN DATABASE
+    try {
+        $stmt = $conn->prepare("SELECT status FROM users WHERE user_id=? LIMIT 1");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 1) {
+            $user = $result->fetch_assoc();
+            if ($user['status'] !== 'Active') {
+                $is_inactive = true;
+            }
+        }
+        $stmt->close();
+    } catch (Exception $e) {
+        error_log("Logout status check error: " . $e->getMessage());
+    }
+
     // Determine logout type
-    $logout_type = isset($_GET['auto']) ? 'Auto Logout' : 'Logout';
-    $remarks = isset($_GET['auto']) 
-        ? "User $username auto-logged out due to inactivity from IP: $ip"
-        : "User $username logged out from IP: $ip";
+    if ($is_inactive) {
+        $logout_type = 'Logout - Account Inactive';
+        $remarks = "Inactive user $username logged out from IP: $ip";
+        $log_status = 'Warning';
+    } elseif (isset($_GET['auto'])) {
+        $logout_type = 'Auto Logout';
+        $remarks = "User $username auto-logged out due to inactivity from IP: $ip";
+        $log_status = 'Success';
+    } else {
+        $logout_type = 'Logout';
+        $remarks = "User $username logged out from IP: $ip";
+        $log_status = 'Success';
+    }
 
     // ✅ Log to both tables
     log_to_both_tables(
@@ -45,7 +75,7 @@ if (!empty($_SESSION['userdata']['user_id'])) {
         $logout_type,
         'Authentication',
         $remarks,
-        'Success'
+        $log_status
     );
 }
 
@@ -71,9 +101,12 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// Redirect
+// ✅ Redirect with appropriate message
 if (isset($_GET['auto'])) {
     header("Location: login.php?timeout=1&auto=1");
+} elseif ($is_inactive) {
+    // ✅ SHOW INACTIVE WARNING INSTEAD OF SUCCESS
+    header("Location: login.php?logout=1&inactive=1");
 } else {
     header("Location: login.php?logout=1");
 }

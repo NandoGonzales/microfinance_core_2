@@ -47,6 +47,43 @@ function checkSessionTimeout()
 }
 
 /**
+ * ✅ NEW: Check if user account is still active
+ */
+function checkUserStatus()
+{
+    global $conn;
+    
+    // If no userdata, can't check status
+    if (!isset($_SESSION['userdata']['user_id'])) {
+        return false;
+    }
+    
+    $user_id = $_SESSION['userdata']['user_id'];
+    
+    try {
+        $stmt = $conn->prepare("SELECT status FROM users WHERE user_id=? LIMIT 1");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 1) {
+            $user = $result->fetch_assoc();
+            $stmt->close();
+            
+            // Return true if Active, false if Inactive
+            return ($user['status'] === 'Active');
+        }
+        
+        $stmt->close();
+        return false; // User not found
+        
+    } catch (Exception $e) {
+        error_log("User status check error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * ✅ Log to BOTH tables WITH IP ADDRESS
  */
 function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Success') {
@@ -81,6 +118,106 @@ function log_to_both_tables($user_id, $action, $module, $remarks, $status = 'Suc
     } catch (Exception $e) {
         error_log("Permission log error: " . $e->getMessage());
     }
+}
+
+/**
+ * ✅ NEW: Handle inactive user - force logout
+ */
+function handleInactiveUser()
+{
+    global $conn;
+    
+    $user_id = $_SESSION['userdata']['user_id'] ?? 0;
+    $username = $_SESSION['userdata']['full_name'] ?? 'Unknown';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+
+    // ✅ Log forced logout due to deactivation
+    log_to_both_tables(
+        $user_id,
+        'Forced Logout - Account Deactivated',
+        'Authentication',
+        "User $username was automatically logged out because account was deactivated. IP: $ip",
+        'Warning'
+    );
+
+    // ✅ Completely destroy session
+    $_SESSION = array();
+
+    // Destroy session cookie
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params["path"],
+            $params["domain"],
+            $params["secure"],
+            $params["httponly"]
+        );
+    }
+
+    session_destroy();
+    session_start();
+    session_regenerate_id(true);
+
+    // ✅ Clear output buffer
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    
+    // ✅ Set headers
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+    
+    // Output the SweetAlert page
+    ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Deactivated</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+    </style>
+</head>
+<body>
+<script>
+    history.pushState(null, null, location.href);
+    window.onpopstate = function () {
+        history.go(1);
+    };
+    
+    Swal.fire({
+        icon: "warning",
+        title: "Account Deactivated",
+        html: "<p style='color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;'>Your account has been deactivated by an administrator.</p><p style='color: #6c757d; font-size: 0.95rem; margin: 10px 0;'>Please contact support for assistance.</p>",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#ffc107",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        background: "#ffffff"
+    }).then(() => {
+        sessionStorage.clear();
+        localStorage.removeItem('sessionActive');
+        window.location.replace("/admin/login.php?logout=1&inactive=1");
+    });
+</script>
+</body>
+</html>
+    <?php
+    exit();
 }
 
 /**
@@ -198,9 +335,16 @@ $is_login_page = strpos($link, 'login.php') !== false;
 
 // ✅ Check session timeout only if NOT on login page
 if (!$is_login_page && isset($_SESSION['userdata'])) {
+    // ✅ FIRST: Check if account is still active
+    if (!checkUserStatus()) {
+        handleInactiveUser(); // Show account deactivated alert and logout
+        // Code below will NEVER execute
+    }
+    
+    // ✅ SECOND: Check session timeout
     if (!checkSessionTimeout()) {
-        handleSessionTimeout(); // This will show SweetAlert and exit
-        // Code below will NEVER execute after handleSessionTimeout()
+        handleSessionTimeout(); // Show session expired alert and logout
+        // Code below will NEVER execute
     }
 }
 
