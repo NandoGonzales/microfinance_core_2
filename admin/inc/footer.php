@@ -17,9 +17,23 @@
         let countdownInterval;
         let lastActivity = Date.now();
         let sessionExpiredShown = false; // Prevent multiple alerts
+        let isLoggingOut = false; // ✅ NEW: Track if user is logging out manually
+
+        // ✅ Stop session checker when logout button is clicked
+        document.addEventListener('click', function(e) {
+            // Check if clicked element or its parent is a logout link/button
+            const target = e.target.closest('a[href*="logout.php"], button[onclick*="logout"]');
+            if (target) {
+                isLoggingOut = true;
+                clearInterval(countdownInterval);
+                sessionExpiredShown = true; // Prevent alert from showing
+            }
+        });
 
         // Reset activity timer on user interaction
         function resetActivityTimer() {
+            if (isLoggingOut) return; // ✅ Don't update if logging out
+            
             lastActivity = Date.now();
             
             // Send AJAX request to update session (ABSOLUTE PATH)
@@ -35,7 +49,7 @@
             .then(response => response.json())
             .then(data => {
                 // ✅ Check if session is still valid
-                if (data.session_valid === false && !sessionExpiredShown) {
+                if (data.session_valid === false && !sessionExpiredShown && !isLoggingOut) {
                     // Session expired on server side
                     clearInterval(countdownInterval);
                     sessionExpiredShown = true;
@@ -49,6 +63,8 @@
 
         // Show session expired alert
         function showSessionExpired() {
+            if (isLoggingOut) return; // ✅ Don't show if logging out
+            
             Swal.fire({
                 icon: 'warning',
                 title: 'Session Expired',
@@ -65,7 +81,7 @@
 
         // Check session timeout (client-side)
         function checkSessionTimeout() {
-            if (sessionExpiredShown) return; // Already showing alert
+            if (sessionExpiredShown || isLoggingOut) return; // ✅ Also check isLoggingOut
             
             const elapsed = Math.floor((Date.now() - lastActivity) / 1000);
             const remaining = sessionTimeout - elapsed;
