@@ -12,7 +12,7 @@ if (isset($_SESSION['userdata'])) {
 
 $error_message = "";
 
-// ✅ Show session expired alert with matching style
+// ✅ Show session expired alert with matching style (ONLY if auto logout)
 if (isset($_GET['auto']) && isset($_GET['timeout'])) {
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -28,9 +28,8 @@ if (isset($_GET['auto']) && isset($_GET['timeout'])) {
         });
     </script>';
 }
-
-// ✅ Show success message for manual logout
-if (isset($_GET['logout'])) {
+// ✅ Show success message for manual logout (ONLY if NOT auto logout)
+elseif (isset($_GET['logout'])) {
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
             Swal.fire({
@@ -229,7 +228,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <h1 class="text-4xl font-bold mt-4"><?= $_settings->info('system_name') ?? 'Microfinance HR' ?></h1>
                     <p class="text-white/80"><?= $_settings->info('system_tagline') ?? 'Human Resource Management' ?></p>
                 </div>
-                
 
                 <!-- Illustration Carousel (Optional - add your images) -->
                 <div class="relative w-full max-w-2xl h-96 my-6">
