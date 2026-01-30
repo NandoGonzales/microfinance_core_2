@@ -103,8 +103,8 @@ function handleSessionTimeout()
         'Failed'
     );
 
-    // Clear all session data
-    $_SESSION = [];
+    // ✅ CRITICAL: Completely destroy session FIRST
+    $_SESSION = array(); // Clear all session data
 
     // Destroy session cookie
     if (ini_get("session.use_cookies")) {
@@ -122,12 +122,24 @@ function handleSessionTimeout()
 
     // Destroy the session
     session_destroy();
+    
+    // ✅ Start a new clean session to prevent issues
+    session_start();
+    session_regenerate_id(true);
 
     // ✅ CRITICAL: Stop all output and show SweetAlert
-    if (ob_get_level()) ob_end_clean();
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    
+    // ✅ Set headers to prevent caching
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Cache-Control: post-check=0, pre-check=0", false);
+    header("Pragma: no-cache");
     
     // Output the SweetAlert page
-    echo '<!DOCTYPE html>
+    ?>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -149,20 +161,33 @@ function handleSessionTimeout()
 </head>
 <body>
 <script>
+    // Prevent back button
+    history.pushState(null, null, location.href);
+    window.onpopstate = function () {
+        history.go(1);
+    };
+    
     Swal.fire({
         icon: "warning",
         title: "Session Expired",
-        html: "<p style=\"color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;\">You have been logged out due to 2 minutes of inactivity.</p><p style=\"color: #6c757d; font-size: 0.95rem; margin: 10px 0;\">Please log in again to continue.</p>",
+        html: "<p style='color: #856404; font-weight: bold; font-size: 1rem; margin: 10px 0;'>You have been logged out due to 2 minutes of inactivity.</p><p style='color: #6c757d; font-size: 0.95rem; margin: 10px 0;'>Please log in again to continue.</p>",
         confirmButtonText: "OK",
         confirmButtonColor: "#3085d6",
         allowOutsideClick: false,
+        allowEscapeKey: false,
         background: "#ffffff"
     }).then(() => {
-        window.location.href = "/admin/login.php";
+        // Clear any remaining session data
+        sessionStorage.clear();
+        localStorage.removeItem('sessionActive');
+        
+        // Force redirect to login
+        window.location.replace("/admin/login.php");
     });
 </script>
 </body>
-</html>';
+</html>
+    <?php
     exit();
 }
 
@@ -171,10 +196,11 @@ function handleSessionTimeout()
 // Skip session timeout check for login page
 $is_login_page = strpos($link, 'login.php') !== false;
 
-// Check session timeout only if NOT on login page
+// ✅ Check session timeout only if NOT on login page
 if (!$is_login_page && isset($_SESSION['userdata'])) {
     if (!checkSessionTimeout()) {
-        handleSessionTimeout(); // ✅ This will now show SweetAlert directly
+        handleSessionTimeout(); // This will show SweetAlert and exit
+        // Code below will NEVER execute after handleSessionTimeout()
     }
 }
 
@@ -195,19 +221,25 @@ if (!isset($_SESSION['userdata']) && !$is_login_page) {
 }
 
 // 🔹 2. User already logged in but visiting login.php → redirect to dashboard
-if (isset($_SESSION['userdata']) && $is_login_page) {
-    log_audit(
-        $_SESSION['userdata']['user_id'] ?? 0,
-        'Re-login Attempt',
-        'Authentication',
-        null,
-        'User attempted to visit login page while logged in.'
-    );
+// ✅ ONLY redirect if session has valid userdata AND valid last_activity
+if (isset($_SESSION['userdata']) && isset($_SESSION['last_activity']) && $is_login_page) {
+    $elapsed = time() - $_SESSION['last_activity'];
+    
+    // Only redirect to dashboard if session is NOT expired
+    if ($elapsed < SESSION_TIMEOUT) {
+        log_audit(
+            $_SESSION['userdata']['user_id'] ?? 0,
+            'Re-login Attempt',
+            'Authentication',
+            null,
+            'User attempted to visit login page while logged in.'
+        );
 
-    // ✅ Use absolute URL
-    $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
-    header("Location: $base_url/admin/dashboard.php");
-    exit();
+        // ✅ Use absolute URL
+        $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
+        header("Location: $base_url/admin/dashboard.php");
+        exit();
+    }
 }
 
 // 🔹 3. Add session info for JavaScript (optional)
