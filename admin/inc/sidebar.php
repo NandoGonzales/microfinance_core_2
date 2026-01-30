@@ -1,4 +1,4 @@
-<!-- Sidebar Css -->
+<!-- Enhanced Sidebar with Smooth Animations -->
 <style>
     :root {
         --navbar-height: 60px;
@@ -20,8 +20,30 @@
         background-color: #2f855a;
         color: white;
         z-index: 1000;
-        transition: left var(--transition-speed) ease;
-        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        /* Enhanced smooth transitions */
+        transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                    box-shadow 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    /* Custom scrollbar for sidebar */
+    .sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
     }
 
     .sidebar nav ul {
@@ -37,6 +59,8 @@
         color: #fff;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         margin-bottom: 10px;
+        /* Smooth fade in effect */
+        animation: fadeInDown 0.5s ease-out;
     }
 
     .sidebar a {
@@ -44,26 +68,75 @@
         padding: 10px 25px;
         color: #fff;
         text-decoration: none;
-        transition: all 0.2s ease-in-out;
+        position: relative;
+        overflow: hidden;
+        /* Enhanced smooth transitions */
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         border-left: 4px solid transparent;
     }
 
-    .sidebar a:hover {
-        background-color: #4a5448;
-        text-decoration: none;
-        padding-left: 28px;
+    /* Smooth ripple effect on hover */
+    .sidebar a::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 0;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-50%);
+        transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: -1;
     }
 
-    /* 🔰 Gradient highlight for the active page */
+    .sidebar a:hover::before {
+        width: 100%;
+    }
+
+    .sidebar a:hover {
+        background-color: rgba(74, 84, 72, 0.6);
+        text-decoration: none;
+        padding-left: 30px;
+        transform: translateX(2px);
+    }
+
+    .sidebar a i {
+        margin-right: 10px;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-block;
+    }
+
+    .sidebar a:hover i {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    /* Enhanced gradient highlight for the active page */
     .sidebar a.active {
         background: linear-gradient(135deg, #276749, #38a169);
         border-left: 4px solid #81e6d9;
-        box-shadow: inset 2px 0 8px rgba(0, 0, 0, 0.2);
+        box-shadow: inset 2px 0 8px rgba(0, 0, 0, 0.2),
+                    0 2px 8px rgba(56, 161, 105, 0.3);
         font-weight: 600;
+        animation: slideInLeft 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .sidebar a.active i {
         color: #c6f6d5;
+        transform: scale(1.15);
+    }
+
+    .sidebar a.active::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 3px;
+        background: linear-gradient(to bottom, 
+            transparent, 
+            rgba(129, 230, 217, 0.8), 
+            transparent);
+        animation: pulse 2s ease-in-out infinite;
     }
 
     .main-content {
@@ -71,11 +144,14 @@
         margin-left: var(--sidebar-width);
         padding-left: 40px;
         padding-right: 40px;
-        transition: margin-left var(--transition-speed) ease;
+        /* Smooth transition for content shift */
+        transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                    opacity 0.3s ease;
     }
 
     .sidebar.collapsed {
         left: calc(0px - var(--sidebar-width));
+        box-shadow: none;
     }
 
     .main-content.expanded {
@@ -90,6 +166,115 @@
         color: #fff;
         margin-right: 15px;
         outline: none;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .toggle-btn:hover {
+        transform: scale(1.1) rotate(90deg);
+    }
+
+    /* Divider smooth appearance */
+    .sidebar-divider {
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        margin: 10px 0;
+        opacity: 0;
+        animation: fadeIn 0.5s ease-out 0.3s forwards;
+    }
+
+    /* Menu items staggered fade-in animation */
+    .sidebar nav ul li {
+        opacity: 0;
+        animation: fadeInLeft 0.4s ease-out forwards;
+    }
+
+    .sidebar nav ul li:nth-child(1) { animation-delay: 0.1s; }
+    .sidebar nav ul li:nth-child(2) { animation-delay: 0.15s; }
+    .sidebar nav ul li:nth-child(3) { animation-delay: 0.2s; }
+    .sidebar nav ul li:nth-child(4) { animation-delay: 0.25s; }
+    .sidebar nav ul li:nth-child(5) { animation-delay: 0.3s; }
+    .sidebar nav ul li:nth-child(6) { animation-delay: 0.35s; }
+    .sidebar nav ul li:nth-child(7) { animation-delay: 0.4s; }
+    .sidebar nav ul li:nth-child(8) { animation-delay: 0.45s; }
+    .sidebar nav ul li:nth-child(9) { animation-delay: 0.5s; }
+    .sidebar nav ul li:nth-child(10) { animation-delay: 0.55s; }
+
+    /* Keyframe Animations */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes slideInLeft {
+        from {
+            transform: translateX(-10px);
+            opacity: 0.8;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 0.6;
+        }
+        50% {
+            opacity: 1;
+        }
+    }
+
+    /* Smooth hover effect for all clickable items */
+    .sidebar a {
+        cursor: pointer;
+    }
+
+    /* Add smooth focus states for accessibility */
+    .sidebar a:focus {
+        outline: 2px solid rgba(129, 230, 217, 0.5);
+        outline-offset: -2px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .sidebar {
+            width: 100%;
+            max-width: 252px;
+        }
+        
+        .main-content {
+            margin-left: 0;
+        }
+        
+        .sidebar.collapsed {
+            left: -100%;
+        }
     }
 </style>
 
@@ -175,7 +360,7 @@ function path_exists($path) {
             </li>
 
             <!-- Divider -->
-            <li style="border-top:1px solid rgba(255,255,255,0.2); margin:10px 0;"></li>
+            <li class="sidebar-divider"></li>
 
             <!-- User Management Section -->
             <li>
@@ -215,7 +400,7 @@ function path_exists($path) {
     </nav>
 </div>
 
-<!-- Sidebar JS -->
+<!-- Enhanced Sidebar JS -->
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const sidebar = document.getElementById('mySidebar');
@@ -226,7 +411,46 @@ function path_exists($path) {
             toggleButton.addEventListener('click', () => {
                 sidebar.classList.toggle('collapsed');
                 if (mainContent) mainContent.classList.toggle('expanded');
+                
+                // Add smooth bounce effect on toggle
+                toggleButton.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    toggleButton.style.transform = 'scale(1)';
+                }, 150);
             });
         }
+
+        // Add smooth scroll behavior for sidebar
+        const sidebarLinks = document.querySelectorAll('.sidebar a');
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                // Add ripple effect on click
+                const ripple = document.createElement('span');
+                ripple.style.position = 'absolute';
+                ripple.style.width = '100%';
+                ripple.style.height = '100%';
+                ripple.style.top = '0';
+                ripple.style.left = '0';
+                ripple.style.background = 'rgba(255, 255, 255, 0.3)';
+                ripple.style.transform = 'scale(0)';
+                ripple.style.borderRadius = '0';
+                ripple.style.pointerEvents = 'none';
+                
+                this.style.position = 'relative';
+                this.appendChild(ripple);
+                
+                // Animate ripple
+                setTimeout(() => {
+                    ripple.style.transition = 'transform 0.5s ease-out, opacity 0.5s ease-out';
+                    ripple.style.transform = 'scale(1)';
+                    ripple.style.opacity = '0';
+                }, 10);
+                
+                // Remove ripple after animation
+                setTimeout(() => {
+                    ripple.remove();
+                }, 500);
+            });
+        });
     });
 </script>
