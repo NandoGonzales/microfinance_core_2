@@ -14,8 +14,9 @@ require_once(__DIR__ . '/../../initialize_coreT2.php');
 // ─────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────
-$CORE1_URL = 'https://core1.microfinancial-1.com/api/loans';
-$API_TOKEN = 'super-key-123';
+$CORE1_URL         = 'https://core1.microfinancial-1.com/api/loans';
+$CORE1_CLIENTS_URL = 'https://core1.microfinancial-1.com/api/clients';
+$API_TOKEN         = 'super-key-123';
 // ─────────────────────────────────────────────
 
 header('Content-Type: application/json; charset=utf-8');
@@ -97,7 +98,57 @@ function calcEndDate(?string $startDate, int $loanTerm): ?string
 }
 
 
-// ─── STEP 4: Ensure sync_logs table exists ───
+// ─── STEP 4: Sync clients from Core1 → members table ───
+//
+//   Core1 clients field    →  members column
+//   ──────────────────────────────────────────
+//   id                     →  member_id
+//   first_name + last_name →  full_name
+//   email                  →  email  (if your members table has it)
+//   phone                  →  phone  (if your members table has it)
+//
+function saveClients(mysqli $conn, array $clients): int
+{
+    $stmt = $conn->prepare("
+        INSERT INTO members (
+            member_id,
+            full_name
+        ) VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE
+            full_name = VALUES(full_name)
+    ");
+
+    $stmt->bind_param('is', $member_id, $full_name);
+
+    $count = 0;
+
+    foreach ($clients as $client) {
+        $member_id = (int) $client['id'];
+
+        // Handle different possible field structures from Core1:
+        // Case 1: first_name + last_name
+        // Case 2: full_name already combined
+        // Case 3: name
+        if (isset($client['first_name'])) {
+            $full_name = trim(($client['first_name'] ?? '') . ' ' . ($client['last_name'] ?? ''));
+        } elseif (isset($client['full_name'])) {
+            $full_name = (string) $client['full_name'];
+        } elseif (isset($client['name'])) {
+            $full_name = (string) $client['name'];
+        } else {
+            $full_name = 'Client ' . $member_id; // fallback
+        }
+
+        $stmt->execute();
+        $count++;
+    }
+
+    $stmt->close();
+    return $count;
+}
+
+
+
 function ensureSyncLogsTable(mysqli $conn): void
 {
     $conn->query("
@@ -198,27 +249,38 @@ function logSyncResult(mysqli $conn, int $total, string $status, string $message
 // MAIN
 // ─────────────────────────────────────────────
 try {
-    // 1. Fetch from Core1
+    // 1. Fetch clients from Core1 (do this FIRST so member names exist before loans)
+    $clients = fetchLoansFromCore1($CORE1_CLIENTS_URL, $API_TOKEN); // reuses same curl function
+
+    // 2. Ensure sync log table exists
+    ensureSyncLogsTable($conn);
+
+    // 3. Save clients into members table
+    $savedClients = 0;
+    if (!empty($clients)) {
+        $savedClients = saveClients($conn, $clients);
+    }
+
+    // 4. Fetch loans from Core1
     $loans = fetchLoansFromCore1($CORE1_URL, $API_TOKEN);
 
     if (empty($loans)) {
         throw new Exception("No loans returned from Core1.");
     }
 
-    // 2. Ensure sync log table exists
-    ensureSyncLogsTable($conn);
+    // 5. Save into loan_portfolio
+    $savedLoans = saveLoans($conn, $loans);
 
-    // 3. Save into loan_portfolio
-    $saved = saveLoans($conn, $loans);
+    // 6. Log success
+    $msg = "Synced {$savedClients} client(s) and {$savedLoans} loan(s) from Core1.";
+    logSyncResult($conn, $savedLoans, 'success', $msg);
 
-    // 4. Log success
-    logSyncResult($conn, $saved, 'success', "Synced {$saved} loan(s) from Core1 into loan_portfolio.");
-
-    // 5. Response
+    // 7. Response
     echo json_encode([
-        'success' => true,
-        'message' => "Synced {$saved} loan(s) into loan_portfolio.",
-        'total'   => $saved,
+        'success'       => true,
+        'message'       => $msg,
+        'clients_synced'=> $savedClients,
+        'loans_synced'  => $savedLoans,
     ], JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
