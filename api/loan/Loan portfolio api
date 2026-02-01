@@ -1,0 +1,612 @@
+<?php
+/**
+ * Loan Portfolio API for Core2
+ * Works with your existing loan_portfolio table structure
+ * Location: /api/loan/loan_portfolio_api.php
+ */
+
+require_once(__DIR__ . '/../../initialize_coreT2.php');
+require_once(__DIR__ . '/../inc/sess_auth.php');
+
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
+header('Access-Control-Allow-Headers: Content-Type');
+
+global $conn;
+
+try {
+    $method = $_SERVER['REQUEST_METHOD'];
+    $action = $_GET['action'] ?? 'get_loans';
+    
+    switch($method) {
+        case 'GET':
+            handleGet($conn, $action);
+            break;
+        case 'POST':
+            handlePost($conn, $action);
+            break;
+        case 'PUT':
+            handlePut($conn);
+            break;
+        case 'DELETE':
+            handleDelete($conn);
+            break;
+        default:
+            throw new Exception('Method not allowed');
+    }
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
+}
+
+/**
+ * Handle GET requests
+ */
+function handleGet($conn, $action) {
+    switch($action) {
+        case 'get_loans':
+            getLoans($conn);
+            break;
+        case 'get_loan':
+            getSingleLoan($conn);
+            break;
+        case 'get_statistics':
+            getStatistics($conn);
+            break;
+        case 'get_member_loans':
+            getMemberLoans($conn);
+            break;
+        case 'get_risk_analysis':
+            getRiskAnalysis($conn);
+            break;
+        case 'get_overdue_loans':
+            getOverdueLoans($conn);
+            break;
+        case 'export_csv':
+            exportToCSV($conn);
+            break;
+        default:
+            getLoans($conn);
+    }
+}
+
+/**
+ * Get loans with advanced filters
+ */
+function getLoans($conn) {
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+    $offset = ($page - 1) * $limit;
+    
+    // Filters
+    $search = $_GET['search'] ?? '';
+    $status = $_GET['status'] ?? '';
+    $risk_level = $_GET['risk_level'] ?? '';
+    $loan_type = $_GET['loan_type'] ?? '';
+    $overdue_only = isset($_GET['overdue_only']) && $_GET['overdue_only'] === 'true';
+    
+    // Build WHERE clause
+    $where = ["1=1"];
+    $params = [];
+    $types = '';
+    
+    if (!empty($search)) {
+        $where[] = "(lp.loan_type LIKE ? OR m.firstname LIKE ? OR m.lastname LIKE ?)";
+        $searchParam = "%{$search}%";
+        $params[] = $searchParam;
+        $params[] = $searchParam;
+        $params[] = $searchParam;
+        $types .= 'sss';
+    }
+    
+    if (!empty($status)) {
+        $where[] = "lp.status = ?";
+        $params[] = $status;
+        $types .= 's';
+    }
+    
+    if (!empty($loan_type)) {
+        $where[] = "lp.loan_type = ?";
+        $params[] = $loan_type;
+        $types .= 's';
+    }
+    
+    // Calculate risk level based on overdue count
+    if (!empty($risk_level)) {
+        if ($risk_level === 'High') {
+            $where[] = "(SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') >= 3";
+        } elseif ($risk_level === 'Medium') {
+            $where[] = "(SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') BETWEEN 1 AND 2";
+        } elseif ($risk_level === 'Low') {
+            $where[] = "(SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') = 0";
+        }
+    }
+    
+    if ($overdue_only) {
+        $where[] = "(SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') > 0";
+    }
+    
+    $whereClause = implode(' AND ', $where);
+    
+    // Get total count
+    $countSql = "SELECT COUNT(*) as total 
+                 FROM loan_portfolio lp 
+                 LEFT JOIN members m ON lp.member_id = m.member_id 
+                 WHERE {$whereClause}";
+    
+    if (!empty($params)) {
+        $countStmt = $conn->prepare($countSql);
+        $countStmt->bind_param($types, ...$params);
+        $countStmt->execute();
+        $totalRecords = $countStmt->get_result()->fetch_assoc()['total'];
+    } else {
+        $totalRecords = $conn->query($countSql)->fetch_assoc()['total'];
+    }
+    
+    // Get loans with calculated fields
+    $sql = "SELECT 
+                lp.loan_id,
+                lp.member_id,
+                lp.loan_type,
+                lp.principal_amount,
+                lp.interest_rate,
+                lp.loan_term,
+                lp.start_date,
+                lp.end_date,
+                lp.status,
+                CONCAT(m.firstname, ' ', m.lastname) as member_name,
+                (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') as overdue_count,
+                (SELECT MIN(due_date) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Pending') as next_due_date,
+                CASE 
+                    WHEN (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') >= 3 THEN 'High'
+                    WHEN (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') BETWEEN 1 AND 2 THEN 'Medium'
+                    ELSE 'Low'
+                END as risk_level
+            FROM loan_portfolio lp
+            LEFT JOIN members m ON lp.member_id = m.member_id
+            WHERE {$whereClause}
+            ORDER BY lp.loan_id DESC
+            LIMIT ? OFFSET ?";
+    
+    $stmt = $conn->prepare($sql);
+    $params[] = $limit;
+    $params[] = $offset;
+    $types .= 'ii';
+    
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $loans = [];
+    while ($row = $result->fetch_assoc()) {
+        $loans[] = $row;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'data' => $loans,
+        'pagination' => [
+            'current_page' => $page,
+            'total_pages' => ceil($totalRecords / $limit),
+            'total_records' => $totalRecords,
+            'per_page' => $limit
+        ]
+    ]);
+}
+
+/**
+ * Get single loan with payment schedule
+ */
+function getSingleLoan($conn) {
+    $loan_id = $_GET['loan_id'] ?? 0;
+    
+    if (empty($loan_id)) {
+        throw new Exception('Loan ID is required');
+    }
+    
+    // Get loan details
+    $sql = "SELECT 
+                lp.*,
+                CONCAT(m.firstname, ' ', m.lastname) as member_name,
+                m.email,
+                m.phone
+            FROM loan_portfolio lp
+            LEFT JOIN members m ON lp.member_id = m.member_id
+            WHERE lp.loan_id = ?";
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $loan_id);
+    $stmt->execute();
+    $loan = $stmt->get_result()->fetch_assoc();
+    
+    if (!$loan) {
+        throw new Exception('Loan not found');
+    }
+    
+    // Get payment schedules
+    $scheduleSql = "SELECT 
+                        schedule_id,
+                        due_date,
+                        amount_due,
+                        amount_paid,
+                        payment_date,
+                        status,
+                        (amount_due - amount_paid) as balance
+                    FROM loan_schedule 
+                    WHERE loan_id = ? 
+                    ORDER BY due_date";
+    
+    $scheduleStmt = $conn->prepare($scheduleSql);
+    $scheduleStmt->bind_param('i', $loan_id);
+    $scheduleStmt->execute();
+    $scheduleResult = $scheduleStmt->get_result();
+    
+    $schedules = [];
+    $total_paid = 0;
+    $total_due = 0;
+    
+    while ($row = $scheduleResult->fetch_assoc()) {
+        $schedules[] = $row;
+        $total_paid += $row['amount_paid'];
+        $total_due += $row['amount_due'];
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'loan' => $loan,
+        'schedules' => $schedules,
+        'payment_summary' => [
+            'total_due' => $total_due,
+            'total_paid' => $total_paid,
+            'balance' => $total_due - $total_paid,
+            'payment_progress' => $total_due > 0 ? round(($total_paid / $total_due) * 100, 2) : 0
+        ]
+    ]);
+}
+
+/**
+ * Get comprehensive statistics
+ */
+function getStatistics($conn) {
+    $sql = "SELECT 
+                COUNT(*) as total_loans,
+                SUM(principal_amount) as total_amount,
+                AVG(interest_rate) as avg_interest_rate,
+                SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as active_loans,
+                SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved_loans,
+                SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_loans,
+                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_loans,
+                SUM(CASE WHEN status = 'Defaulted' THEN 1 ELSE 0 END) as defaulted_loans
+            FROM loan_portfolio";
+    
+    $result = $conn->query($sql);
+    $stats = $result->fetch_assoc();
+    
+    // Get overdue statistics
+    $overdueSql = "SELECT 
+                    COUNT(DISTINCT lp.loan_id) as overdue_loans
+                   FROM loan_portfolio lp
+                   INNER JOIN loan_schedule ls ON lp.loan_id = ls.loan_id
+                   WHERE ls.status = 'Overdue'";
+    
+    $overdueResult = $conn->query($overdueSql);
+    $overdueStats = $overdueResult->fetch_assoc();
+    
+    // Get risk breakdown
+    $riskSql = "SELECT 
+                    SUM(CASE WHEN overdue_count >= 3 THEN 1 ELSE 0 END) as high_risk,
+                    SUM(CASE WHEN overdue_count BETWEEN 1 AND 2 THEN 1 ELSE 0 END) as medium_risk,
+                    SUM(CASE WHEN overdue_count = 0 THEN 1 ELSE 0 END) as low_risk
+                FROM (
+                    SELECT 
+                        lp.loan_id,
+                        (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') as overdue_count
+                    FROM loan_portfolio lp
+                ) as risk_data";
+    
+    $riskResult = $conn->query($riskSql);
+    $riskStats = $riskResult->fetch_assoc();
+    
+    // Get loan types
+    $typesSql = "SELECT loan_type, COUNT(*) as count FROM loan_portfolio GROUP BY loan_type";
+    $typesResult = $conn->query($typesSql);
+    $loan_types = [];
+    while ($row = $typesResult->fetch_assoc()) {
+        $loan_types[] = $row['loan_type'];
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'data' => [
+            'summary' => [
+                'total_loans' => (int)$stats['total_loans'],
+                'total_amount' => number_format($stats['total_amount'], 2),
+                'average_interest_rate' => number_format($stats['avg_interest_rate'], 2) . '%',
+                'active_loans' => (int)$stats['active_loans'],
+                'approved_loans' => (int)$stats['approved_loans'],
+                'pending_loans' => (int)$stats['pending_loans'],
+                'completed_loans' => (int)$stats['completed_loans'],
+                'defaulted_loans' => (int)$stats['defaulted_loans'],
+                'overdue_loans' => (int)$overdueStats['overdue_loans']
+            ],
+            'risk_breakdown' => [
+                'high_risk' => (int)$riskStats['high_risk'],
+                'medium_risk' => (int)$riskStats['medium_risk'],
+                'low_risk' => (int)$riskStats['low_risk']
+            ],
+            'loan_types' => $loan_types
+        ]
+    ]);
+}
+
+/**
+ * Get member's loans
+ */
+function getMemberLoans($conn) {
+    $member_id = $_GET['member_id'] ?? 0;
+    
+    if (empty($member_id)) {
+        throw new Exception('Member ID is required');
+    }
+    
+    $sql = "SELECT 
+                lp.*,
+                (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') as overdue_count
+            FROM loan_portfolio lp
+            WHERE lp.member_id = ? 
+            ORDER BY lp.loan_id DESC";
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $member_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $loans = [];
+    while ($row = $result->fetch_assoc()) {
+        $loans[] = $row;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'data' => $loans,
+        'count' => count($loans)
+    ]);
+}
+
+/**
+ * Get risk analysis
+ */
+function getRiskAnalysis($conn) {
+    $sql = "SELECT 
+                lp.loan_id,
+                lp.member_id,
+                CONCAT(m.firstname, ' ', m.lastname) as member_name,
+                lp.loan_type,
+                lp.principal_amount,
+                lp.status,
+                (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') as overdue_count,
+                (SELECT SUM(amount_due - amount_paid) FROM loan_schedule WHERE loan_id = lp.loan_id) as outstanding_balance,
+                CASE 
+                    WHEN (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') >= 3 THEN 'High'
+                    WHEN (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') BETWEEN 1 AND 2 THEN 'Medium'
+                    ELSE 'Low'
+                END as risk_level
+            FROM loan_portfolio lp
+            LEFT JOIN members m ON lp.member_id = m.member_id
+            WHERE lp.status = 'Active'
+            ORDER BY overdue_count DESC, outstanding_balance DESC";
+    
+    $result = $conn->query($sql);
+    
+    $loans = [];
+    while ($row = $result->fetch_assoc()) {
+        $loans[] = $row;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'data' => $loans
+    ]);
+}
+
+/**
+ * Get overdue loans only
+ */
+function getOverdueLoans($conn) {
+    $sql = "SELECT DISTINCT
+                lp.loan_id,
+                lp.member_id,
+                CONCAT(m.firstname, ' ', m.lastname) as member_name,
+                lp.loan_type,
+                lp.principal_amount,
+                lp.status,
+                (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') as overdue_count,
+                (SELECT MIN(due_date) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') as first_overdue_date,
+                (SELECT SUM(amount_due - amount_paid) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') as overdue_amount
+            FROM loan_portfolio lp
+            LEFT JOIN members m ON lp.member_id = m.member_id
+            INNER JOIN loan_schedule ls ON lp.loan_id = ls.loan_id
+            WHERE ls.status = 'Overdue'
+            ORDER BY overdue_count DESC, first_overdue_date ASC";
+    
+    $result = $conn->query($sql);
+    
+    $loans = [];
+    while ($row = $result->fetch_assoc()) {
+        // Calculate days overdue
+        $overdue_date = new DateTime($row['first_overdue_date']);
+        $today = new DateTime();
+        $days_overdue = $today->diff($overdue_date)->days;
+        
+        $row['days_overdue'] = $days_overdue;
+        $loans[] = $row;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'data' => $loans,
+        'count' => count($loans)
+    ]);
+}
+
+/**
+ * Export loans to CSV
+ */
+function exportToCSV($conn) {
+    $sql = "SELECT 
+                lp.loan_id,
+                CONCAT(m.firstname, ' ', m.lastname) as member_name,
+                lp.loan_type,
+                lp.principal_amount,
+                lp.interest_rate,
+                lp.loan_term,
+                lp.start_date,
+                lp.end_date,
+                lp.status,
+                (SELECT COUNT(*) FROM loan_schedule WHERE loan_id = lp.loan_id AND status = 'Overdue') as overdue_count
+            FROM loan_portfolio lp
+            LEFT JOIN members m ON lp.member_id = m.member_id
+            ORDER BY lp.loan_id DESC";
+    
+    $result = $conn->query($sql);
+    
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="loans_export_' . date('Y-m-d') . '.csv"');
+    
+    $output = fopen('php://output', 'w');
+    
+    // CSV headers
+    fputcsv($output, ['ID', 'Member', 'Type', 'Principal', 'Interest Rate', 'Term', 'Start Date', 'End Date', 'Status', 'Overdue Count']);
+    
+    // Data rows
+    while ($row = $result->fetch_assoc()) {
+        fputcsv($output, $row);
+    }
+    
+    fclose($output);
+    exit;
+}
+
+/**
+ * Handle POST - Create new loan
+ */
+function handlePost($conn, $action) {
+    $data = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    
+    $required = ['member_id', 'loan_type', 'principal_amount', 'interest_rate', 'loan_term', 'start_date', 'end_date', 'status'];
+    $missing = [];
+    
+    foreach ($required as $field) {
+        if (!isset($data[$field]) || $data[$field] === '') {
+            $missing[] = $field;
+        }
+    }
+    
+    if (!empty($missing)) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Missing required fields',
+            'missing_fields' => $missing
+        ]);
+        return;
+    }
+    
+    $sql = "INSERT INTO loan_portfolio 
+            (member_id, loan_type, principal_amount, interest_rate, loan_term, start_date, end_date, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param(
+        'isddisss',
+        $data['member_id'],
+        $data['loan_type'],
+        $data['principal_amount'],
+        $data['interest_rate'],
+        $data['loan_term'],
+        $data['start_date'],
+        $data['end_date'],
+        $data['status']
+    );
+    
+    if ($stmt->execute()) {
+        http_response_code(201);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Loan created successfully',
+            'loan_id' => $conn->insert_id
+        ]);
+    } else {
+        throw new Exception('Failed to create loan');
+    }
+}
+
+/**
+ * Handle PUT - Update loan
+ */
+function handlePut($conn) {
+    parse_str(file_get_contents("php://input"), $data);
+    
+    if (!isset($data['loan_id'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Loan ID required']);
+        return;
+    }
+    
+    $sql = "UPDATE loan_portfolio 
+            SET member_id = ?, loan_type = ?, principal_amount = ?, 
+                interest_rate = ?, loan_term = ?, start_date = ?, 
+                end_date = ?, status = ?
+            WHERE loan_id = ?";
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param(
+        'isddisssi',
+        $data['member_id'],
+        $data['loan_type'],
+        $data['principal_amount'],
+        $data['interest_rate'],
+        $data['loan_term'],
+        $data['start_date'],
+        $data['end_date'],
+        $data['status'],
+        $data['loan_id']
+    );
+    
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'message' => 'Loan updated successfully']);
+    } else {
+        throw new Exception('Failed to update loan');
+    }
+}
+
+/**
+ * Handle DELETE
+ */
+function handleDelete($conn) {
+    $loan_id = $_GET['loan_id'] ?? 0;
+    
+    if (empty($loan_id)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Loan ID required']);
+        return;
+    }
+    
+    $sql = "DELETE FROM loan_portfolio WHERE loan_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $loan_id);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'message' => 'Loan deleted successfully']);
+    } else {
+        throw new Exception('Failed to delete loan');
+    }
+}
+?>
