@@ -114,6 +114,16 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         border-radius: .5rem;
         margin-bottom: 1rem;
     }
+
+    /* Sync button spinning state */
+    .btn-sync.syncing .bi-arrow-repeat {
+        display: inline-block;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+    }
 </style>
 
 <main class="main-content" id="main-content">
@@ -122,6 +132,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="mb-0 fw-bold text-primary">Loan Portfolio & Risk Management</h4>
             <div class="d-flex gap-2">
+                <!-- NEW: Sync button -->
+                <button id="syncCore1Btn" class="btn btn-sm btn-outline-success btn-sync" title="Pull latest loans from Core1">
+                    <i class="bi bi-arrow-repeat"></i> Sync Core1
+                </button>
                 <button id="exportPdfBtn" class="btn btn-sm btn-danger">
                     <i class="bi bi-file-earmark-pdf"></i> Export PDF
                 </button>
@@ -310,6 +324,67 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         const paginationControls = document.getElementById('paginationControls');
         const paginationInfo = document.getElementById('paginationInfo');
         const filterIndicator = document.getElementById('filterIndicator');
+
+        // ─── NEW: Sync Core1 handler ───
+        document.getElementById('syncCore1Btn').addEventListener('click', function () {
+            const btn = this;
+            btn.disabled = true;
+            btn.classList.add('syncing');
+            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Syncing...';
+
+            fetch('../../api/loan/loan_api.php')
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        // Show a quick green toast-style alert
+                        showSyncToast(res.message, 'success');
+                        // Reload the dashboard so new data shows up
+                        loadData();
+                    } else {
+                        showSyncToast('Sync failed: ' + res.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    showSyncToast('Sync failed: ' + err.message, 'error');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('syncing');
+                    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Core1';
+                });
+        });
+
+        // Simple toast notification for sync result
+        function showSyncToast(message, type) {
+            // Remove any existing toast
+            const existing = document.getElementById('syncToast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.id = 'syncToast';
+            toast.className = 'position-fixed top-0 end-0 p-3' ;
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                <div class="toast align-items-center text-bg-${type === 'success' ? 'success' : 'danger'} border-0 show" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('syncToast').remove()"></button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(toast);
+
+            // Auto-remove after 4 seconds
+            setTimeout(() => {
+                const t = document.getElementById('syncToast');
+                if (t) t.remove();
+            }, 4000);
+        }
+        // ─── END: Sync Core1 handler ───
+
 
         // --- Load data ---
         function loadData() {
