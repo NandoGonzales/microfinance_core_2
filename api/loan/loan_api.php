@@ -14,8 +14,8 @@ require_once(__DIR__ . '/../../initialize_coreT2.php');
 // ─────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────
-$CORE1_URL = 'https://core2.microfinancial-1.com/api/loans';
-$API_TOKEN = '';  // Add Bearer token here if Core1 requires auth
+$CORE1_URL = 'https://core1.microfinancial-1.com/api/loans';
+$API_TOKEN = 'super-key-123';
 // ─────────────────────────────────────────────
 
 header('Content-Type: application/json; charset=utf-8');
